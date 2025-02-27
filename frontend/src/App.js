@@ -1,13 +1,13 @@
 import React from 'react';
-import GraphForm from './components/GraphForm';  // Import the new GraphForm component
+import Main from './components/Main';
 
-function App() {
+const App = () => {
   return (
-    <div className="App">
-      <h1>Influence Maximization</h1>
-      <GraphForm />  {/* Render the GraphForm component */}
+    <div>
+      <h1>Graphnet</h1>
+      <Main />
     </div>
   );
-}
+};
 
 export default App;
