@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 
   const Sidebar = ({ onSubmit }) => {
-    const [datasets] = useState(['facebook 0', 'facebook 107', 'facebook 348', 'facebook 414']);
-    const [diffusionModels] = useState(['Linear Threshold', 'Independent Cascade']);
-    const [algorithms] = useState(['Greedy', 'Random', 'CELF', 'Random Walk']);
+    const [datasets] = useState(['facebook 0', 'facebook 1','facebook 107', 'facebook 348', 'facebook 414','facebook 686','facebook 696','facebook 1684','facebook 1912', 'facebook 3437', 'facebook 3980']);
+    const [diffusionModels] = useState(['linear_threshold', 'independent_cascade']);
+    const [algorithms] = useState(['greedy', 'random_selection', 'CELF', 'Random Walk']);
   
     const [selectedDataset, setSelectedDataset] = useState('');
     const [selectedModel, setSelectedModel] = useState('');
     const [selectedAlgorithm, setSelectedAlgorithm] = useState('');
   
-    // Handlers for input changes
+
     const handleDatasetChange = (event) => {
       setSelectedDataset(event.target.value);
     };
@@ -22,9 +22,13 @@ import React, { useState } from 'react';
       setSelectedAlgorithm(event.target.value);
     };
   
-    // Function to handle the submit action
+
+    //transmite selectiile userului la componenta Main
     const handleSubmit = () => {
-      onSubmit(selectedDataset, selectedModel, selectedAlgorithm); // Pass data to Main component
+      console.log("Dataset:", selectedDataset);
+      console.log("Model:", selectedModel);
+      console.log("Algorithm:", selectedAlgorithm);
+      onSubmit(selectedDataset, selectedModel, selectedAlgorithm); 
     };
   
     return (
@@ -62,7 +66,7 @@ import React, { useState } from 'react';
         </div>
   
         <button onClick={handleSubmit} style={{ marginTop: '20px', padding: '10px' }}>
-          Run Algorithm
+          Preview network
         </button>
       </div>
     );
