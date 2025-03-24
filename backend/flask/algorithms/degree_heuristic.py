@@ -1,20 +1,19 @@
 import sys
 import json
 import os
-import random
 from typing import List, Dict, Set, Tuple, Union
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
 from propagation_models import LinearThresholdModel, IndependentCascadeModel
 
-def random_selection_algorithm(
+def degree_heuristic_algorithm(
     nodes: List[Union[str, int]],
     edges: List[Tuple[Union[str, int], Union[str, int]]],
     model_name: str,
     params: Dict[str, Union[int, float]]
 ) -> List[Dict[str, Union[int, List[Union[str, int]], str]]]:
     """
-    Random Selection algorithm for influence maximization
+    Simple Heuristic algorithm for influence maximization (Degree-based)
     
     Args:
         nodes: List of node IDs
@@ -48,15 +47,23 @@ def random_selection_algorithm(
     except Exception as e:
         raise ValueError(f"Model initialization failed: {str(e)}")
 
-    # Randomly select seed nodes
-    seed_nodes = random.sample(nodes, k) if nodes else []
+    # Calculate degree centrality (number of connections for each node)
+    node_degrees = {node: 0 for node in nodes}
+    for u, v in edges:
+        node_degrees[u] += 1
+        node_degrees[v] += 1
+    
+    # Sort nodes by degree (descending) and select top k
+    sorted_nodes = sorted(node_degrees.keys(), key=lambda x: node_degrees[x], reverse=True)
+    seed_nodes = sorted_nodes[:k]
     
     # Initialize stages
     stages = [{
         "stage": 1,
         "selected_nodes": seed_nodes,
         "propagated_nodes": seed_nodes,
-        "total_activated": len(seed_nodes)
+        "total_activated": len(seed_nodes),
+        "average_degree": sum(node_degrees[n] for n in seed_nodes)/len(seed_nodes) if seed_nodes else 0
     }]
 
     # Propagation steps
@@ -78,7 +85,7 @@ def random_selection_algorithm(
 if __name__ == "__main__":
     try:
         if len(sys.argv) != 5:
-            raise ValueError("Usage: python random_selection.py <nodes_json> <edges_json> <model> <params_json>")
+            raise ValueError("Usage: python simple_heuristic.py <nodes_json> <edges_json> <model> <params_json>")
             
         nodes = json.loads(sys.argv[1])
         edges = json.loads(sys.argv[2])
@@ -88,7 +95,7 @@ if __name__ == "__main__":
         if not isinstance(nodes, list) or not isinstance(edges, list):
             raise ValueError("Nodes and edges must be lists")
             
-        stages = random_selection_algorithm(nodes, edges, model, params)
+        stages = degree_heuristic_algorithm(nodes, edges, model, params)
         print(json.dumps(stages))
         
     except json.JSONDecodeError as e:

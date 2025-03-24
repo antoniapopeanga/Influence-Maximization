@@ -1,0 +1,109 @@
+/* PreviewComponent.css */
+.preview-wrapper {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  background: #1e1e1e;
+}
+
+.graph-container {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.info-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  background: #2d2d2d;
+  color: white;
+  max-height: 30vh;
+  overflow-y: auto;
+  z-index: 2;
+  border-top: 1px solid #444;
+}
+
+.control-panel {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: fixed; /* Changed from absolute to fixed */
+  bottom: 20px;
+  right: 20px;
+  border-radius: 8px;
+  z-index: 1000; /* Increased z-index */
+  max-width: 300px;
+}
+
+/* Ensure loading overlay doesn't cover control panel */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 300px; /* Account for sidebar */
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 100; /* Lower than control panel */
+}
+
+/* Add this to prevent ForceGraph3D from covering elements */
+canvas {
+  position: relative;
+  z-index: 1 !important;
+}
+
+/* Rest of your existing styles... */
+.algorithm-stage-info {
+  margin-bottom: 15px;
+  padding: 10px;
+  background: #3a3a3a;
+  border-radius: 5px;
+}
+
+.algorithm-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.algorithm-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.8;
+  transition: all 0.2s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .control-panel {
+    position: relative;
+    bottom: auto;
+    right: auto;
+    max-width: 100%;
+    margin: 10px;
+  }
+  
+  .loading-overlay {
+    left: 0;
+  }
+}

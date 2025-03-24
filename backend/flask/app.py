@@ -6,87 +6,152 @@ from flask_cors import CORS
 import subprocess
 import os
 import json
+import time
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000"])
 
 DATASET_FOLDER = "../../datasets/csv_files"
 
-@app.route("/run-algorithm", methods=["POST"])
-def run_algorithm():
-
-    #preluam parametrii din frontend
-    data = request.json  
-
-    #extragem si prelucram datele
-    selected_dataset = data.get("dataset")
-    dataset_name, dataset_number = selected_dataset.split(" ")
-
-    selected_model = data.get("model") 
-    selected_algorithm = data.get("algorithm")  
-
-    dataset_filename_edges = f"{dataset_name}/{dataset_number}_edges.csv"
-    dataset_filepath_edges = os.path.join(DATASET_FOLDER, dataset_filename_edges)
-
-    if not os.path.exists(dataset_filepath_edges):
-        return jsonify({"error": f"Dataset {selected_dataset} not found"}), 400
-
-    df = pd.read_csv(dataset_filepath_edges)
-    edges = list(zip(df['source'], df['target']))
-
-    #cream graful
-    G = nx.Graph()
-    G.add_edges_from(edges)
-    result = {
-        "nodes": list(G.nodes()),
-        "edges": list(G.edges())
-    }
-
-    # rulam scriptul portrivit
+def run_single_algorithm(algorithm, G, model, params):
+    """Run a single algorithm and return its results"""
     try:
+        start_time = time.time()
+        
+        # Prepare the algorithm command
+        cmd = [
+            'python', f'algorithms/{algorithm}.py',
+            json.dumps(list(G.nodes())),
+            json.dumps(list(G.edges())),
+            model,
+            json.dumps(params)
+        ]
+        
+        # Execute the algorithm
         result_process = subprocess.run(
-            ['python', f'algorithms/{selected_algorithm}.py', 
-             json.dumps(list(G.nodes())), 
-             json.dumps(list(G.edges())), 
-             selected_model],
-            capture_output=True, 
-            text=True, 
-            check=True  
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True
         )
+        
+        runtime = (time.time() - start_time) * 1000  # Convert to milliseconds
 
-        #debug
-        print("Full stdout:", result_process.stdout)
+        # Process the output
         stdout_lines = [line.strip() for line in result_process.stdout.split('\n') if line.strip()]
         
-        if stdout_lines:
-            try:
-                algorithm_stages = json.loads(stdout_lines[-1])
-                result["algorithm_stages"] = algorithm_stages
-            except json.JSONDecodeError:
-                return jsonify({
-                    "error": "Failed to parse algorithm output",
-                    "stdout": result_process.stdout,
-                    "stderr": result_process.stderr
-                }), 500
-        else:
-            return jsonify({
-                "error": "No output from algorithm script",
+        if not stdout_lines:
+            return {
+                "status": "error",
+                "error": "Algorithm produced no output",
                 "stdout": result_process.stdout,
                 "stderr": result_process.stderr
-            }), 500
-
-        return jsonify(result)
+            }
+            
+        algorithm_stages = json.loads(stdout_lines[-1])
+        
+        # Calculate metrics
+        seed_nodes = set()
+        total_activated = 0
+        for stage in algorithm_stages:
+            if 'selected_nodes' in stage:
+                seed_nodes.update(stage['selected_nodes'])
+            if 'total_activated' in stage:
+                total_activated = max(total_activated, stage['total_activated'])
+        
+        return {
+            "status": "success",
+            "stages": algorithm_stages,
+            "metrics": {
+                "spread": total_activated,
+                "runtime": runtime,
+                "seed_set_size": len(seed_nodes),
+                "seed_nodes": list(seed_nodes)
+            }
+        }
 
     except subprocess.CalledProcessError as e:
-      
-        return jsonify({
+        return {
+            "status": "error",
             "error": "Algorithm execution failed",
             "stdout": e.stdout,
             "stderr": e.stderr
-        }), 500
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+@app.route("/run-algorithm", methods=["POST"])
+def run_algorithm():
+    """Endpoint for running a single algorithm"""
+    try:
+        data = request.json
+        
+        # Validate required parameters
+        required_fields = ['dataset', 'model', 'algorithm']
+        if not all(field in data for field in required_fields):
+            return jsonify({
+                "status": "error",
+                "error": f"Missing required fields. Need: {required_fields}"
+            }), 400
+
+        selected_dataset = data['dataset']
+        selected_model = data['model']
+        selected_algorithm = data['algorithm']
+        parameters = data.get('parameters', {})
+
+        # Load and validate dataset
+        try:
+            dataset_name, dataset_number = selected_dataset.split(' ')
+        except ValueError:
+            return jsonify({
+                "status": "error",
+                "error": "Dataset name must be in format 'name number'"
+            }), 400
+
+        dataset_filepath = os.path.join(DATASET_FOLDER, f"{dataset_name}/{dataset_number}_edges.csv")
+        
+        if not os.path.exists(dataset_filepath):
+            return jsonify({
+                "status": "error",
+                "error": f"Dataset {selected_dataset} not found"
+            }), 404
+
+        # Load graph data
+        try:
+            df = pd.read_csv(dataset_filepath)
+            G = nx.Graph()
+            G.add_edges_from(list(zip(df['source'], df['target'])))
+        except Exception as e:
+            return jsonify({
+                "status": "error",
+                "error": f"Failed to load graph data: {str(e)}"
+            }), 400
+
+        # Run algorithm
+        algorithm_result = run_single_algorithm(selected_algorithm, G, selected_model, parameters)
+        
+        if algorithm_result["status"] == "error":
+            return jsonify(algorithm_result), 500
+
+        # Prepare successful response
+        response = {
+            "status": "success",
+            "nodes": list(G.nodes()),
+            "edges": list(G.edges()),
+            "algorithm": selected_algorithm,
+            "stages": algorithm_result["stages"],
+            "metrics": algorithm_result["metrics"]
+        }
+        
+        return jsonify(response)
+
     except Exception as e:
         return jsonify({
-            "error": str(e)
+            "status": "error",
+            "error": f"Unexpected server error: {str(e)}"
         }), 500
 
 if __name__ == "__main__":
