@@ -2,9 +2,74 @@ import sys
 import json
 import os
 from typing import List, Dict, Set, Tuple, Union
+from collections import defaultdict, deque
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
 from propagation_models import LinearThresholdModel, IndependentCascadeModel
+
+def calculate_betweenness_centrality(
+    nodes: List[Union[str, int]],
+    edges: List[Tuple[Union[str, int], Union[str, int]]]
+) -> Dict[Union[str, int], float]:
+    """
+    Calculate betweenness centrality for all nodes in the graph.
+    
+    Args:
+        nodes: List of node IDs
+        edges: List of edge tuples (source, target)
+    
+    Returns:
+        Dictionary of betweenness centrality scores for each node
+    """
+    graph = defaultdict(list)
+    for u, v in edges:
+        graph[u].append(v)
+        graph[v].append(u)
+    
+    betweenness = defaultdict(float)
+    
+    for s in nodes:
+        # Shortest paths from source node s
+        predecessors = defaultdict(list)
+        shortest_paths = defaultdict(int)
+        shortest_paths[s] = 1
+        distances = {s: 0}
+        queue = deque([s])
+        
+        # BFS to find shortest paths
+        while queue:
+            v = queue.popleft()
+            for w in graph[v]:
+                if w not in distances:
+                    distances[w] = distances[v] + 1
+                    queue.append(w)
+                if distances[w] == distances[v] + 1:
+                    shortest_paths[w] += shortest_paths[v]
+                    predecessors[w].append(v)
+        
+        # Accumulate betweenness
+        delta = defaultdict(float)
+        stack = []
+        for node in sorted(distances.keys(), key=lambda x: -distances[x]):
+            stack.append(node)
+        
+        while stack:
+            w = stack.pop()
+            for v in predecessors[w]:
+                delta[v] += (shortest_paths[v] / shortest_paths[w]) * (1 + delta[w])
+            if w != s:
+                betweenness[w] += delta[w]
+    
+    # Normalize for undirected graphs
+    for node in betweenness:
+        betweenness[node] /= 2
+    
+    # Ensure all nodes have a score, even if 0
+    for node in nodes:
+        if node not in betweenness:
+            betweenness[node] = 0.0
+    
+    return betweenness
 
 def centrality_heuristic_algorithm(
     nodes: List[Union[str, int]],
@@ -13,7 +78,7 @@ def centrality_heuristic_algorithm(
     params: Dict[str, Union[int, float]]
 ) -> List[Dict[str, Union[int, List[Union[str, int]], str]]]:
     """
-    Centrality Heuristic algorithm for influence maximization
+    Centrality Heuristic algorithm for influence maximization using betweenness centrality
     
     Args:
         nodes: List of node IDs
@@ -47,14 +112,11 @@ def centrality_heuristic_algorithm(
     except Exception as e:
         raise ValueError(f"Model initialization failed: {str(e)}")
 
-    # Centrality Heuristic: Choose nodes based on degree centrality
-    node_degrees = {node: 0 for node in nodes}
-    for u, v in edges:
-        node_degrees[u] += 1
-        node_degrees[v] += 1
+    # Calculate betweenness centrality
+    betweenness = calculate_betweenness_centrality(nodes, edges)
     
-    # Sort nodes by degree (descending) and select top k
-    sorted_nodes = sorted(node_degrees.keys(), key=lambda x: node_degrees[x], reverse=True)
+    # Sort nodes by betweenness (descending) and select top k
+    sorted_nodes = sorted(betweenness.keys(), key=lambda x: betweenness[x], reverse=True)
     seed_nodes = sorted_nodes[:k]
     
     # Initialize stages
@@ -62,7 +124,8 @@ def centrality_heuristic_algorithm(
         "stage": 1,
         "selected_nodes": seed_nodes,
         "propagated_nodes": seed_nodes,
-        "total_activated": len(seed_nodes)
+        "total_activated": len(seed_nodes),
+        "centrality_scores": {n: betweenness[n] for n in seed_nodes}
     }]
 
     # Propagation steps

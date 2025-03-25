@@ -93,6 +93,11 @@ canvas {
   transition: all 0.2s ease;
 }
 
+.algorithm-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .control-panel {

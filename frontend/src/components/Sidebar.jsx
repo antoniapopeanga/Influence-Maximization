@@ -85,7 +85,7 @@ const Sidebar = ({ onSubmit }) => {
       ...prev,
       [algorithm]: {
         ...prev[algorithm],
-        [name]: Number(value)  // Convert to number since inputs return strings
+        [name]: Number(value)  
       }
     }));
   };
