@@ -38,6 +38,11 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
       graphRef.current.zoomToFit(500);
       graphRef.current.d3Force("charge").strength(-800);
       graphRef.current.d3Force("link").distance(250);
+
+      setTimeout(() => {
+        graphRef.current.zoomToFit(400, 100, node => true);
+        graphRef.current.cameraPosition({ z: 700 }); // Move camera further back
+      }, 100);
     }
   }, [graphData]);
 
@@ -187,9 +192,6 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
       }
     }, 2000);
   };
-
-  // Rest of the component remains the same...
-  // (Rendering methods are unchanged from the previous version)
 
   return (
     <div className="preview-wrapper">

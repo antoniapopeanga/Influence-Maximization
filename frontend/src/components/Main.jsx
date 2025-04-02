@@ -5,7 +5,9 @@ import PreviewComponent from './PreviewComponent';
 import axios from 'axios';
 import '../css/Main.css';
 import StatisticsComparison from './StatisticsComparison';
-import { BarChartOutlined } from '@ant-design/icons';
+import { BarChartOutlined, LineChartOutlined } from '@ant-design/icons';
+import InfluenceSpreadChart from './InfluenceSpreadChart';
+
 
 const Main = () => {
   const [graphData, setGraphData] = useState(null);
@@ -14,6 +16,7 @@ const Main = () => {
   const [selectedAlgorithms, setSelectedAlgorithms] = useState([]);
   const [comparisonMode, setComparisonMode] = useState(false);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false); // Modal state
+  const [isChartsModalOpen, setIsChartsModalOpen] = useState(false);
 
   const handleSubmit = async (selectedDataset, selectedModel, selectedAlgorithms, parameters) => {
     setGraphData(null);
@@ -30,6 +33,10 @@ const Main = () => {
           algorithm: algorithm,
           parameters: parameters[algorithm] || {}
         });
+  
+        // Print the exact response from the algorithm in the console
+        console.log(`Algorithm: ${algorithm}`, response.data);
+  
         responses[algorithm] = response.data;
       }
       
@@ -38,6 +45,10 @@ const Main = () => {
         edges: responses[selectedAlgorithms[0]].edges,
         algorithm_results: responses
       });
+  
+      // Print all algorithm results in the console
+      console.log("Final algorithm results:", responses);
+  
     } catch (error) {
       console.error("Error running the algorithm:", error.response?.data || error.message);
       setError({
@@ -48,6 +59,7 @@ const Main = () => {
       setIsLoading(false);
     }
   };
+  
 
 // Main.js (updated return section)
 return (
@@ -89,31 +101,52 @@ return (
 
       </div>
 
-      {/* Fixed position stats button */}
-      {graphData && (
-        <div className="stats-button-container">
-          <Button 
-            type="primary" 
-            onClick={() => setIsStatsModalOpen(true)}
-            className="stats-button"
-            icon={<BarChartOutlined />}
-          >
-            Stats
-          </Button>
-        </div>
-      )}
+        {/* Button container for both buttons */}
+        {graphData && (
+          <div className="action-buttons-container">
+            <Button 
+              type="primary" 
+              onClick={() => setIsChartsModalOpen(true)}
+              className="action-button"
+              icon={<LineChartOutlined />}
+            >
+              Charts
+            </Button>
+            <Button 
+              type="primary" 
+              onClick={() => setIsStatsModalOpen(true)}
+              className="action-button"
+              icon={<BarChartOutlined />}
+            >
+              Stats
+            </Button>
+          </div>
+        )}
 
-      {/* Modal (unchanged) */}
-      <Modal
-        title="Algorithm Performance Comparison"
-        open={isStatsModalOpen}
-        onCancel={() => setIsStatsModalOpen(false)}
-        footer={null}
-        width="80%"
-        centered
-      >
-        <StatisticsComparison algorithmResults={graphData?.algorithm_results} />
-      </Modal>
+        {/* Statistics Modal (unchanged) */}
+        <Modal
+          title="Algorithm Performance Comparison"
+          open={isStatsModalOpen}
+          onCancel={() => setIsStatsModalOpen(false)}
+          footer={null}
+          width="80%"
+          centered
+        >
+          <StatisticsComparison algorithmResults={graphData?.algorithm_results} />
+        </Modal>
+
+        {/* New Charts Modal */}
+        <Modal
+          title="Influence Spread Visualization"
+          open={isChartsModalOpen}
+          onCancel={() => setIsChartsModalOpen(false)}
+          footer={null}
+          width="80%"
+          centered
+          style={{ top: 20 }}
+        >
+          <InfluenceSpreadChart algorithmResults={graphData?.algorithm_results} />
+        </Modal>
     </div>
   </div>
 );

@@ -39,15 +39,17 @@
   min-height: 0;
   overflow: hidden;
 }
-
-.stats-button-container {
+/* Updated button container for both buttons */
+.action-buttons-container {
   position: fixed;
   bottom: 20px;
   left: 320px; /* 300px sidebar + 20px margin */
-  z-index: 1000; /* Same as control panel */
+  display: flex;
+  gap: 10px;
+  z-index: 1000;
 }
 
-.stats-button {
+.action-button {
   padding: 6px 12px;
   height: 32px;
   font-size: 12px;
@@ -61,12 +63,19 @@
   gap: 4px;
 }
 
-.stats-button:hover {
+.action-button:hover {
   background-color: #40a9ff;
   transform: translateY(-1px);
 }
 
+/* Different color for charts button */
+.charts-button {
+  background-color: #13c2c2; /* Teal color */
+}
 
+.charts-button:hover {
+  background-color: #36cfc9;
+}
 .error-container {
   position: absolute;
   top: 50%;

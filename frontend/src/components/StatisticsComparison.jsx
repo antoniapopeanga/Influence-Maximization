@@ -88,12 +88,12 @@ return (
 // Helper function
 const getAlgorithmColor = (algorithm) => {
   const colors = {
-    classic_greedy: 'magenta',
-    random_selection: 'red',
-    degree_heuristic: 'volcano',
-    centrality_heuristic: 'orange',
-    celf: 'gold',
-    celf_plus: 'lime'
+    classic_greedy: "rgb(255, 105, 180)", // hot pink
+    random_selection: "rgb(50, 205, 50)", // lime green
+    degree_heuristic: "rgb(79, 15, 206)", // medium purple
+    centrality_heuristic: "rgb(255, 215, 0)", // gold
+    celf: "rgb(255, 105, 180)", // hot pink
+    celf_plus: "rgb(0, 191, 255)" // deep sky blue
   };
   return colors[algorithm] || 'geekblue';
 };
