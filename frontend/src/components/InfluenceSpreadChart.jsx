@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, Empty, Tabs } from 'antd';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import '../css/InfluenceSpreadChart.css';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -16,8 +17,7 @@ const algorithmColors = {
 };
 
 const getAlgorithmColor = (algorithm) => {
-  const normalizedAlgo = algorithm.toLowerCase().replace(/_/g, '_');
-  return algorithmColors[normalizedAlgo] || '#8c8c8c'; 
+  return algorithmColors[algorithm] || '#8c8c8c'; 
 };
 
 const prepareSpreadData = (algorithmResults) => {
@@ -25,27 +25,39 @@ const prepareSpreadData = (algorithmResults) => {
     return { labels: [], datasets: [] };
   }
 
-  const labels = Array.from({ length: 20 }, (_, i) => i + 1);
-  const datasets = Object.keys(algorithmResults).map(algorithm => {
-    const result = algorithmResults[algorithm];
-    const spread = result?.metrics?.spread || 0;
-    const seedSetSize = result?.metrics?.seed_set_size || 1;
-
-    const data = labels.map(i => {
-      return i <= seedSetSize
-        ? Math.round((i / seedSetSize) * spread * 0.9)
-        : Math.min(spread + Math.round((i - seedSetSize) * 0.3 * (spread / seedSetSize)), spread * 1.5);
+  // Collect all unique seed sizes across all algorithms
+  const allSeedSizes = new Set();
+  Object.values(algorithmResults).forEach(algorithmData => {
+    algorithmData.results?.forEach(result => {
+      allSeedSizes.add(result.seed_size);
     });
+  });
+  const sortedSeedSizes = Array.from(allSeedSizes).sort((a, b) => a - b);
+
+  const datasets = Object.entries(algorithmResults).map(([algorithm, algorithmData]) => {
+    // Create a map of seed size to spread for this algorithm
+    const spreadBySeedSize = {};
+    algorithmData.results?.forEach(result => {
+      spreadBySeedSize[result.seed_size] = result.metrics.spread;
+    });
+
+    // Fill in data points for all seed sizes
+    const data = sortedSeedSizes.map(size => spreadBySeedSize[size] || null);
 
     return {
       label: algorithm.replace(/_/g, ' '),
       data,
       borderColor: getAlgorithmColor(algorithm),
+      backgroundColor: getAlgorithmColor(algorithm),
       fill: false,
+      tension: 0.1
     };
   });
 
-  return { labels, datasets };
+  return {
+    labels: sortedSeedSizes.map(size => `${size} nodes`),
+    datasets
+  };
 };
 
 const prepareStagesData = (algorithmResults) => {
@@ -53,30 +65,36 @@ const prepareStagesData = (algorithmResults) => {
     return { labels: [], datasets: [] };
   }
 
-  const algorithmNames = Object.keys(algorithmResults);
-  const labels = [];
-  const datasets = [];
+  const datasets = Object.entries(algorithmResults).map(([algorithm, algorithmData]) => {
+    // We'll show the stages for the largest seed size by default
+    const resultsBySeedSize = algorithmData.results || [];
+    const largestSeedSizeResult = resultsBySeedSize.reduce((max, result) => 
+      result.seed_size > (max?.seed_size || 0) ? result : max, null);
+    
+    const stages = largestSeedSizeResult?.stages || [];
+    const data = stages.map(stage => stage.total_activated);
+    const labels = stages.map((_, index) => `Stage ${index + 1}`);
 
-  algorithmNames.forEach(algorithm => {
-    const stages = algorithmResults[algorithm]?.stages || [];
-    const data = [];
-
-    stages.forEach(stage => {
-      if (stage?.stage !== undefined && stage?.total_activated !== undefined) {
-        labels.push(stage.stage);
-        data.push(stage.total_activated);
-      }
-    });
-
-    datasets.push({
-      label: algorithm.replace(/_/g, ' '),
+    return {
+      label: `${algorithm.replace(/_/g, ' ')} (${largestSeedSizeResult?.seed_size || '?'} seeds)`,
       data,
       borderColor: getAlgorithmColor(algorithm),
+      backgroundColor: getAlgorithmColor(algorithm),
       fill: false,
-    });
+      tension: 0.1
+    };
   });
 
-  return { labels: [...new Set(labels)], datasets };
+  // Get the maximum number of stages to determine labels
+  const maxStages = Math.max(...Object.values(algorithmResults).map(algorithmData => {
+    const results = algorithmData.results || [];
+    return Math.max(...results.map(result => result.stages?.length || 0));
+  }));
+
+  return {
+    labels: Array.from({ length: maxStages }, (_, i) => `Stage ${i + 1}`),
+    datasets
+  };
 };
 
 const InfluenceSpreadChart = ({ algorithmResults }) => {
@@ -90,8 +108,8 @@ const InfluenceSpreadChart = ({ algorithmResults }) => {
 
   const spreadData = prepareSpreadData(algorithmResults);
   const stagesData = prepareStagesData(algorithmResults);
-  const hasSpreadData = spreadData.datasets.length > 0;
-  const hasStagesData = stagesData.datasets.length > 0;
+  const hasSpreadData = spreadData.datasets.length > 0 && spreadData.labels.length > 0;
+  const hasStagesData = stagesData.datasets.length > 0 && stagesData.labels.length > 0;
 
   if (!hasSpreadData && !hasStagesData) {
     return (
@@ -101,13 +119,63 @@ const InfluenceSpreadChart = ({ algorithmResults }) => {
     );
   }
 
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      tooltip: {
+        callbacks: {
+          label: (context) => {
+            const label = context.dataset.label || '';
+            const value = context.raw !== null ? context.raw : 'N/A';
+            return `${label}: ${value}`;
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Number of Activated Nodes'
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Seed Set Size'
+        }
+      }
+    }
+  };
+
   const tabItems = [];
 
   if (hasSpreadData) {
     tabItems.push({
       key: '1',
-      label: 'Spread by Target Set Size',
-      children: <Line data={spreadData} />,
+      label: 'Spread by Seed Set Size',
+      children: (
+        <Line 
+          data={spreadData} 
+          options={{
+            ...chartOptions,
+            scales: {
+              ...chartOptions.scales,
+              x: {
+                ...chartOptions.scales.x,
+                title: {
+                  display: true,
+                  text: 'Seed Set Size'
+                }
+              }
+            }
+          }} 
+        />
+      ),
     });
   }
 
@@ -115,7 +183,24 @@ const InfluenceSpreadChart = ({ algorithmResults }) => {
     tabItems.push({
       key: '2',
       label: 'Influence Propagation by Stage',
-      children: <Line data={stagesData} />,
+      children: (
+        <Line 
+          data={stagesData} 
+          options={{
+            ...chartOptions,
+            scales: {
+              ...chartOptions.scales,
+              x: {
+                ...chartOptions.scales.x,
+                title: {
+                  display: true,
+                  text: 'Propagation Stage'
+                }
+              }
+            }
+          }} 
+        />
+      ),
     });
   }
 

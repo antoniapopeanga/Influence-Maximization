@@ -11,6 +11,8 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
   const [comparisonResults, setComparisonResults] = useState([]);
   const [seedNodes, setSeedNodes] = useState(new Set());
   const [activatedNodes, setActivatedNodes] = useState(new Set());
+  const [currentSeedSize, setCurrentSeedSize] = useState(null);
+
 
   // Process graph data with support for multiple algorithms
   const processedGraphData = React.useMemo(() => {
@@ -78,6 +80,20 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
     }
   }, [highlightedNodes, seedNodes, activatedNodes, activeAlgorithm]);
 
+  useEffect(() => {
+    if (currentSeedSize !== null) {
+      // Add "show" class to display the seed size text
+      const seedSizeElement = document.querySelector('.seed-size-info');
+      if (seedSizeElement) {
+        seedSizeElement.classList.add('show');
+        setTimeout(() => {
+          seedSizeElement.classList.remove('show');
+        }, 1000); // Keep the seed size displayed for 1 second
+      }
+    }
+  }, [currentSeedSize]);
+  
+
   // Color mapping for different algorithms
   const getAlgorithmColor = (algorithm) => {
     const colors = {
@@ -91,17 +107,31 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
     return algorithm ? colors[algorithm] : null;
   };
 
-  const startAnimation = (algorithm) => {
-    // Reset previous animation state
+  const clearAnimationData = () => {
     setHighlightedNodes(new Set());
     setCurrentStage(null);
     setActivatedNodes(new Set());
+    setCurrentSeedSize(null);
+    setSeedNodes(new Set());
     
-    // Clear previous algorithm assignments
-    graphDataRef.current.nodes.forEach(node => {
-      node.__algorithm = null;
-    });
-    graphRef.current.refresh();
+    // Reset node colors and algorithm assignments
+    if (graphDataRef.current) {
+      graphDataRef.current.nodes.forEach(node => {
+        node.__algorithm = null;
+        node.color = "#4682B4"; // Reset to default color
+      });
+    }
+    
+    // Force graph refresh if available
+    if (graphRef.current) {
+      graphRef.current.refresh();
+    }
+  };
+
+  const startAnimation = async (algorithm) => {
+    // Clear ALL previous animation data including seed nodes
+    clearAnimationData();
+    await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause after clear
   
     const algorithmResults = graphData?.algorithm_results?.[algorithm];
     if (!algorithmResults) {
@@ -109,89 +139,109 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
       return;
     }
   
-    const stages = algorithmResults.stages;
-    if (!stages || stages.length === 0) {
-      console.warn(`No stages found for algorithm ${algorithm}`);
-      return;
-    }
-  
-    // Set seed nodes
-    const seedNodesSet = new Set(algorithmResults.metrics.seed_nodes);
-    setSeedNodes(seedNodesSet);
-  
     setActiveAlgorithm(algorithm);
     setIsAnimating(true);
   
-    let stageIndex = 0;
+    // Get all seed sizes and sort them numerically
+    const seedSizes = Object.keys(algorithmResults.stages_by_seed)
+      .map(Number)
+      .sort((a, b) => a - b);
   
-    const interval = setInterval(() => {
-      if (stageIndex < stages.length) {
+    // Process each seed size sequentially
+    for (const seedSize of seedSizes) {
+      // COMPLETE RESET - Clear everything including previous seed nodes
+      clearAnimationData();
+      setCurrentSeedSize(seedSize);
+      
+      // Visual pause before new seed size starts (1 second)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+  
+      const stages = algorithmResults.stages_by_seed[seedSize];
+      
+      if (!stages || stages.length === 0) {
+        console.warn(`No stages found for seed size ${seedSize}`);
+        continue;
+      }
+  
+      // Collect seed nodes for this seed size
+      const seedNodesSet = new Set();
+      stages.forEach(stage => {
+        if (stage.selected_nodes) {
+          stage.selected_nodes.forEach(node => seedNodesSet.add(node));
+        }
+      });
+  
+      for (let stageIndex = 0; stageIndex < stages.length; stageIndex++) {
         const newStage = stages[stageIndex];
         setCurrentStage({...newStage, algorithm});
-  
-        setHighlightedNodes(prev => {
-          const updatedNodes = new Set();
-          
-          // Handle selected nodes
-          if (Array.isArray(newStage.selected_nodes)) {
-            newStage.selected_nodes.forEach(node => {
-              updatedNodes.add(node);
-              const nodeObj = graphDataRef.current.nodes.find(n => n.id === node);
-              if (nodeObj) nodeObj.__algorithm = algorithm;
-            });
-          }
-          
-          // Handle propagated nodes
-          if (Array.isArray(newStage.propagated_nodes)) {
-            newStage.propagated_nodes.forEach(node => {
-              // Only add non-seed nodes to highlighted nodes
-              if (!seedNodesSet.has(node)) {
-                updatedNodes.add(node);
-              }
-            });
-          }
-          
-          return updatedNodes;
-        });
 
-        // Update activated nodes
-        setActivatedNodes(prev => {
-          const updatedActivated = new Set(prev);
-          
-          // Add selected nodes
-          if (Array.isArray(newStage.selected_nodes)) {
-            newStage.selected_nodes.forEach(node => updatedActivated.add(node));
-          }
-          
-          // Add propagated nodes
-          if (Array.isArray(newStage.propagated_nodes)) {
-            newStage.propagated_nodes.forEach(node => updatedActivated.add(node));
-          }
-          
-          return updatedActivated;
-        });
-  
-        stageIndex++;
-      } else {
-        clearInterval(interval);
-        setIsAnimating(false);
-        
-        // Store results for comparison
-        if (algorithmResults.metrics) {
-          setComparisonResults(prev => [
-            ...prev.filter(r => r.algorithm !== algorithm),
-            { 
-              algorithm, 
-              ...algorithmResults.metrics,
-              seed_nodes: stages
-                .flatMap(stage => stage.selected_nodes || [])
-                .filter((v, i, a) => a.indexOf(v) === i)
+        const seedNodes = new Set();
+        if (Array.isArray(newStage.selected_nodes)) {
+          newStage.selected_nodes.forEach(node => {
+            seedNodes.add(node);
+            const nodeObj = graphDataRef.current.nodes.find(n => n.id === node);
+            if (nodeObj) {
+              nodeObj.__algorithm = algorithm;
+              nodeObj.color = getAlgorithmColor(algorithm); // Force color update
             }
-          ]);
+          });
         }
+        
+        setSeedNodes(seedNodes);
+        setHighlightedNodes(seedNodes);
+        setActivatedNodes(prev => new Set([...prev, ...seedNodes]));
+
+        // Pause after showing seed nodes (1.5 seconds)
+        await new Promise(resolve => setTimeout(resolve, 1500));
+            
+  
+        // Update visualization - only propagated nodes
+        const propagatedNodes = new Set();
+        if (Array.isArray(newStage.propagated_nodes)) {
+          newStage.propagated_nodes.forEach(node => {
+            if (!seedNodesSet.has(node)) {
+              propagatedNodes.add(node);
+            }
+          });
+        }
+  
+        setHighlightedNodes(propagatedNodes);
+        setActivatedNodes(prev => new Set([...prev, ...propagatedNodes]));
+  
+        // Longer pause between stages (3 seconds)
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
-    }, 2000);
+  
+      // Extended pause between different seed sizes (2 seconds)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  
+    // Final pause before ending animation (1 second)
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setIsAnimating(false);
+    setCurrentSeedSize(null);
+    
+    // Update comparison results
+    if (algorithmResults.metrics) {
+      setComparisonResults(prev => [
+        ...prev.filter(r => r.algorithm !== algorithm),
+        { 
+          algorithm, 
+          ...algorithmResults.metrics,
+          seed_nodes: Array.from(
+            new Set(
+              seedSizes.flatMap(size => 
+                algorithmResults.stages_by_seed[size]
+                  .flatMap(stage => stage.selected_nodes || [])
+              )
+            )
+          )
+        }
+      ]);
+    }
   };
+  
+  
 
   return (
     <div className="preview-wrapper">
@@ -221,6 +271,12 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
             </div>
           </div>
         )}
+
+          {currentSeedSize !== null && (
+              <div className="seed-size-info">
+                <h4>Current Seed Size: {currentSeedSize}</h4>
+              </div>
+            )}
 
         {comparisonResults.length > 0 && (
           <div className="comparison-results">
@@ -263,6 +319,7 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
             </button>
           ))}
         </div>
+        
       </div>
     </div>
     </div>

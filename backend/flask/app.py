@@ -14,7 +14,7 @@ CORS(app, origins=["http://localhost:3000"])
 DATASET_FOLDER = "../../datasets/csv_files"
 
 def run_single_algorithm(algorithm, G, model, params):
-    """Run a single algorithm and return its results"""
+    """Run a single algorithm with specific parameters and return its results"""
     try:
         start_time = time.time()
         
@@ -85,7 +85,7 @@ def run_single_algorithm(algorithm, G, model, params):
 
 @app.route("/run-algorithm", methods=["POST"])
 def run_algorithm():
-    """Endpoint for running a single algorithm"""
+    """Endpoint for running algorithms with multiple seed sizes"""
     try:
         data = request.json
         
@@ -101,6 +101,11 @@ def run_algorithm():
         selected_model = data['model']
         selected_algorithm = data['algorithm']
         parameters = data.get('parameters', {})
+        
+        # Get seed sizes (default to [5] if not provided)
+        seed_sizes = parameters.get('seedSize', [5])
+        if not isinstance(seed_sizes, list):
+            seed_sizes = [seed_sizes]
 
         # Load and validate dataset
         try:
@@ -130,11 +135,39 @@ def run_algorithm():
                 "error": f"Failed to load graph data: {str(e)}"
             }), 400
 
-        # Run algorithm
-        algorithm_result = run_single_algorithm(selected_algorithm, G, selected_model, parameters)
+        all_results = []
+        seed_stages = {}  # Dictionary to store stages by seed size
         
-        if algorithm_result["status"] == "error":
-            return jsonify(algorithm_result), 500
+        # Run algorithm for each seed size
+        for seed_size in seed_sizes:
+            # Create copy of parameters with current seed size
+            current_params = parameters.copy()
+            current_params['seedSize'] = seed_size
+            
+            algorithm_result = run_single_algorithm(
+                selected_algorithm, 
+                G, 
+                selected_model, 
+                current_params
+            )
+            
+            if algorithm_result["status"] == "error":
+                all_results.append({
+                    "seed_size": seed_size,
+                    "status": "error",
+                    "error": algorithm_result["error"]
+                })
+                continue
+            
+            # Store stages with seed size as key
+            seed_stages[seed_size] = algorithm_result["stages"]
+            
+            all_results.append({
+                "seed_size": seed_size,
+                "status": "success",
+                "metrics": algorithm_result["metrics"],
+                "stages": algorithm_result["stages"]  # Include stages with each result
+            })
 
         # Prepare successful response
         response = {
@@ -142,8 +175,8 @@ def run_algorithm():
             "nodes": list(G.nodes()),
             "edges": list(G.edges()),
             "algorithm": selected_algorithm,
-            "stages": algorithm_result["stages"],
-            "metrics": algorithm_result["metrics"]
+            "results": all_results,  # Each result contains its own stages
+            "stages_by_seed": seed_stages  # Alternative organization of stages
         }
         
         return jsonify(response)

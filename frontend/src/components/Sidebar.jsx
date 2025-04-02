@@ -24,23 +24,23 @@ const Sidebar = ({ onSubmit }) => {
 
   const algorithmParameters = {
     classic_greedy: [
-      { name: "seedSize", label: "Seed Set Size", type: "number", default: 5, min: 1, max: 50 },
+      { name: "seedSize", label: "Seed Set Size", type: "checkbox-group", options: [3, 5, 10, 15, 20] },
       { name: "maxSteps", label: "Max Propagation Steps", type: "number", default: 5, min: 1, max: 10 }
     ],
     random_selection: [
-      { name: "seedSize", label: "Number of Seeds", type: "number", default: 5, min: 1, max: 50 }
+      { name: "seedSize", label: "Number of Seeds", type: "checkbox-group", options: [3, 5, 10, 15, 20] }
     ],
     degree_heuristic: [
-      { name: "seedSize", label: "Number of Seeds", type: "number", default: 5, min: 1, max: 50 }
+      { name: "seedSize", label: "Number of Seeds", type: "checkbox-group", options: [3, 5, 10, 15, 20] }
     ],
     centrality_heuristic: [
-      { name: "seedSize", label: "Number of Seeds", type: "number", default: 5, min: 1, max: 50 }
+      { name: "seedSize", label: "Number of Seeds", type: "checkbox-group", options: [3, 5, 10, 15, 20] }
     ],
     celf: [
-      { name: "seedSize", label: "Number of Seeds", type: "number", default: 5, min: 1, max: 50 }
+      { name: "seedSize", label: "Number of Seeds", type: "checkbox-group", options: [3, 5, 10, 15, 20] }
     ],
     celf_plus: [
-      { name: "seedSize", label: "Number of Seeds", type: "number", default: 5, min: 1, max: 50 }
+      { name: "seedSize", label: "Number of Seeds", type: "checkbox-group", options: [3, 5, 10, 15, 20] }
     ]
   };
 
@@ -68,13 +68,15 @@ const Sidebar = ({ onSubmit }) => {
         : prev.filter(alg => alg !== value)
     );
     
-    // Set active algorithm for parameter display
     if (isChecked) {
       setActiveAlgorithm(value);
-      // Initialize default parameters for this algorithm
       const defaultParams = {};
       algorithmParameters[value]?.forEach(param => {
-        defaultParams[param.name] = param.default;
+        if (param.type === "checkbox-group") {
+          defaultParams[param.name] = [];
+        } else {
+          defaultParams[param.name] = param.default;
+        }
       });
       setParameters(prev => ({ ...prev, [value]: defaultParams }));
     }
@@ -85,9 +87,27 @@ const Sidebar = ({ onSubmit }) => {
       ...prev,
       [algorithm]: {
         ...prev[algorithm],
-        [name]: Number(value)  
+        [name]: value
       }
     }));
+  };
+
+  const handleCheckboxChange = (algorithm, paramName, optionValue, isChecked) => {
+    const currentValues = parameters[algorithm]?.[paramName] || [];
+    let newValues;
+    
+    if (isChecked) {
+      newValues = [...currentValues, optionValue];
+    } else {
+      newValues = currentValues.filter(val => val !== optionValue);
+    }
+    
+    // If all are unchecked, keep at least one selected
+    if (newValues.length === 0) {
+      newValues = [algorithmParameters[algorithm].find(p => p.name === paramName).options[0]];
+    }
+    
+    handleParamChange(algorithm, paramName, newValues);
   };
 
   const handleSubmit = (e) => {
@@ -97,7 +117,6 @@ const Sidebar = ({ onSubmit }) => {
       return;
     }
     
-    // Prepare parameters for all selected algorithms
     const allParams = {};
     selectedAlgorithms.forEach(algorithm => {
       allParams[algorithm] = parameters[algorithm] || {};
@@ -108,84 +127,104 @@ const Sidebar = ({ onSubmit }) => {
 
   return (
     <div className="sidebar">
-      <div className="sidebar-content"> {/* New wrapper div */}
-      <h2>Control Panel</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <h3>Select Dataset</h3>
-          <select 
-            onChange={handleDatasetChange} 
-            value={selectedDataset}
-            required
-          >
-            <option value="" disabled>Select Dataset</option>
-            {datasets.map((dataset, index) => (
-              <option key={index} value={dataset}>
-                {dataset}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="form-group">
-          <h3>Diffusion Model</h3>
-          <select 
-            onChange={handleModelChange} 
-            value={selectedModel}
-            required
-          >
-            <option value="" disabled>Select Model</option>
-            {diffusionModels.map((model, index) => (
-              <option key={index} value={model.value}>
-                {model.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="form-group">
-          <h3>Select Algorithms (Multiple)</h3>
-          <div className="algorithm-checkboxes">
-            {algorithms.map((algorithm, index) => (
-              <label key={index} className="checkbox-label">
-                <input
-                  type="checkbox"
-                  value={algorithm.value}
-                  checked={selectedAlgorithms.includes(algorithm.value)}
-                  onChange={handleAlgorithmChange}
-                />
-                {algorithm.label}
-              </label>
-            ))}
+      <div className="sidebar-content">
+        <h2>Control Panel</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <h3>Select Dataset</h3>
+            <select 
+              onChange={handleDatasetChange} 
+              value={selectedDataset}
+              required
+            >
+              <option value="" disabled>Select Dataset</option>
+              {datasets.map((dataset, index) => (
+                <option key={index} value={dataset}>
+                  {dataset}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
 
-        <div className="form-group">
-          <h3>Algorithm Parameters</h3>
-          {selectedAlgorithms.map(algorithm => (
-            <div key={algorithm} className="algorithm-params">
-              <h4>{algorithms.find(a => a.value === algorithm)?.label}</h4>
-              {algorithmParameters[algorithm]?.map(param => (
-                <div key={`${algorithm}-${param.name}`} className="param-control">
-                  <label>{param.label}:</label>
+          <div className="form-group">
+            <h3>Diffusion Model</h3>
+            <select 
+              onChange={handleModelChange} 
+              value={selectedModel}
+              required
+            >
+              <option value="" disabled>Select Model</option>
+              {diffusionModels.map((model, index) => (
+                <option key={index} value={model.value}>
+                  {model.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <h3>Select Algorithms (Multiple)</h3>
+            <div className="algorithm-checkboxes">
+              {algorithms.map((algorithm, index) => (
+                <label key={index} className="checkbox-label">
                   <input
-                    type={param.type}
-                    value={parameters[algorithm]?.[param.name] ?? param.default}
-                    min={param.min}
-                    max={param.max}
-                    onChange={(e) => handleParamChange(algorithm, param.name, e.target.value)}
+                    type="checkbox"
+                    value={algorithm.value}
+                    checked={selectedAlgorithms.includes(algorithm.value)}
+                    onChange={handleAlgorithmChange}
                   />
-                </div>
+                  {algorithm.label}
+                </label>
               ))}
             </div>
-          ))}
-        </div>
+          </div>
 
-        <button type="submit" className="submit-button">
-          Run Comparison
-        </button>
-      </form>
-    </div>
+          <div className="form-group">
+            <h3>Algorithm Parameters</h3>
+            {selectedAlgorithms.map(algorithm => (
+              <div key={algorithm} className="algorithm-params">
+                <h4>{algorithms.find(a => a.value === algorithm)?.label}</h4>
+                {algorithmParameters[algorithm]?.map(param => (
+                  <div key={`${algorithm}-${param.name}`} className="param-control">
+                    <label>{param.label}:</label>
+                    {param.type === "checkbox-group" ? (
+                      <div className="checkbox-group">
+                        {param.options.map(option => (
+                          <label key={option} className="checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={parameters[algorithm]?.[param.name]?.includes(option) || false}
+                              onChange={(e) => handleCheckboxChange(
+                                algorithm,
+                                param.name,
+                                option,
+                                e.target.checked
+                              )}
+                            />
+                            {option}
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <input
+                        type={param.type}
+                        value={parameters[algorithm]?.[param.name] ?? param.default}
+                        min={param.min}
+                        max={param.max}
+                        onChange={(e) => handleParamChange(algorithm, param.name, Number(e.target.value))}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          <button type="submit" className="submit-button">
+            Run Comparison
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

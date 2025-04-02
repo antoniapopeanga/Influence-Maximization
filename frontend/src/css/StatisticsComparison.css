@@ -58,3 +58,27 @@
 .ant-progress-inner {
   background-color: #e6f7ff;
 }
+
+/* StatisticsComparison.css */
+.comparison-table {
+  margin-top: 16px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 24px;
+}
+
+.empty-state .icon-data {
+  font-size: 48px;
+  color: #ccc;
+}
+
+.seed-count {
+  cursor: help;
+  text-decoration: underline dotted;
+}
+
+.ant-collapse > .ant-collapse-item > .ant-collapse-header {
+  align-items: center;
+}
