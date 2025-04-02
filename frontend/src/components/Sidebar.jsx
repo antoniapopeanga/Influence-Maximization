@@ -108,6 +108,7 @@ const Sidebar = ({ onSubmit }) => {
 
   return (
     <div className="sidebar">
+      <div className="sidebar-content"> {/* New wrapper div */}
       <h2>Control Panel</h2>
       <form onSubmit={handleSubmit}>
         <div className="form-group">
@@ -184,6 +185,7 @@ const Sidebar = ({ onSubmit }) => {
           Run Comparison
         </button>
       </form>
+    </div>
     </div>
   );
 };
