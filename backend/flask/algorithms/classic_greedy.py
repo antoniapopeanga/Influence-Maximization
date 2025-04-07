@@ -48,6 +48,7 @@ def monte_carlo_simulation(
         spreads.append(len(activated))
     
     return np.mean(spreads)
+
 #functia algoritmului greedy
 #pentru fiecare nod efectueaza simulari montecarlo si adauga in seed_set nodurile care au cea mai mare influenta la pasul curent
 def greedy_influence_maximization(

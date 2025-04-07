@@ -18,8 +18,7 @@ const Sidebar = ({ onSubmit }) => {
     { value: 'random_selection', label: 'Random Selection' },
     { value: 'degree_heuristic', label: 'Degree Heuristic' },
     { value: 'centrality_heuristic', label: 'Centrality Heuristic' },
-    { value: 'celf', label: 'CEF' },
-    { value: 'celf_plus', label: 'CELF++' }
+    { value: 'celf', label: 'CELF' },
   ]);
 
   const algorithmParameters = {
@@ -37,9 +36,6 @@ const Sidebar = ({ onSubmit }) => {
       { name: "seedSize", label: "Number of Seeds", type: "checkbox-group", options: [3, 5, 10, 15, 20] }
     ],
     celf: [
-      { name: "seedSize", label: "Number of Seeds", type: "checkbox-group", options: [3, 5, 10, 15, 20] }
-    ],
-    celf_plus: [
       { name: "seedSize", label: "Number of Seeds", type: "checkbox-group", options: [3, 5, 10, 15, 20] }
     ]
   };
