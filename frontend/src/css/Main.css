@@ -17,20 +17,19 @@
 }
 
 .content-container {
-  position: relative; /* Needed for absolute positioning of button */
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-/* New wrapper for preview and button */
 .simulation-area {
   flex: 1;
   display: flex;
   flex-direction: column;
   position: relative;
-  min-height: 0; /* Crucial for proper flex sizing */
+  min-height: 0;
 }
 
 .preview-wrapper {
@@ -39,11 +38,10 @@
   min-height: 0;
   overflow: hidden;
 }
-/* Updated button container for both buttons */
 .action-buttons-container {
   position: fixed;
   bottom: 20px;
-  left: 320px; /* 300px sidebar + 20px margin */
+  left: 320px;
   display: flex;
   gap: 10px;
   z-index: 1000;
@@ -68,9 +66,8 @@
   transform: translateY(-1px);
 }
 
-/* Different color for charts button */
 .charts-button {
-  background-color: #13c2c2; /* Teal color */
+  background-color: #13c2c2;
 }
 
 .charts-button:hover {
@@ -120,31 +117,4 @@
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .main-container {
-    flex-direction: column;
-  }
-  
-  .sidebar-container {
-    width: 100%;
-    height: auto;
-    max-height: 40vh;
-  }
-  
-  .content-container {
-    padding: 10px;
-  }
-  
-  .stats-button-container {
-    padding: 10px 0;
-    justify-content: center;
-  }
-  
-  .error-container {
-    width: 90%;
-    max-width: 90%;
-  }
 }

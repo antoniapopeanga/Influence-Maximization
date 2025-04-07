@@ -7,20 +7,13 @@ from collections import defaultdict, deque
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
 from propagation_models import LinearThresholdModel, IndependentCascadeModel
 
+#functia de calculare a scorului de betweeness
+#calculeaza cate cele mai scurte drumuri trec printr-un nod v
 def calculate_betweenness_centrality(
     nodes: List[Union[str, int]],
     edges: List[Tuple[Union[str, int], Union[str, int]]]
 ) -> Dict[Union[str, int], float]:
-    """
-    Calculate betweenness centrality for all nodes in the graph.
-    
-    Args:
-        nodes: List of node IDs
-        edges: List of edge tuples (source, target)
-    
-    Returns:
-        Dictionary of betweenness centrality scores for each node
-    """
+  
     graph = defaultdict(list)
     for u, v in edges:
         graph[u].append(v)
@@ -29,14 +22,12 @@ def calculate_betweenness_centrality(
     betweenness = defaultdict(float)
     
     for s in nodes:
-        # Shortest paths from source node s
         predecessors = defaultdict(list)
         shortest_paths = defaultdict(int)
         shortest_paths[s] = 1
         distances = {s: 0}
         queue = deque([s])
         
-        # BFS to find shortest paths
         while queue:
             v = queue.popleft()
             for w in graph[v]:
@@ -47,7 +38,6 @@ def calculate_betweenness_centrality(
                     shortest_paths[w] += shortest_paths[v]
                     predecessors[w].append(v)
         
-        # Accumulate betweenness
         delta = defaultdict(float)
         stack = []
         for node in sorted(distances.keys(), key=lambda x: -distances[x]):
@@ -60,11 +50,9 @@ def calculate_betweenness_centrality(
             if w != s:
                 betweenness[w] += delta[w]
     
-    # Normalize for undirected graphs
     for node in betweenness:
         betweenness[node] /= 2
     
-    # Ensure all nodes have a score, even if 0
     for node in nodes:
         if node not in betweenness:
             betweenness[node] = 0.0
@@ -77,29 +65,12 @@ def centrality_heuristic_algorithm(
     model_name: str,
     params: Dict[str, Union[int, float]]
 ) -> List[Dict[str, Union[int, List[Union[str, int]], str]]]:
-    """
-    Centrality Heuristic algorithm for influence maximization using betweenness centrality
-    
-    Args:
-        nodes: List of node IDs
-        edges: List of edge tuples (source, target)
-        model_name: Either 'linear_threshold' or 'independent_cascade'
-        params: Dictionary of parameters including:
-            - seedSize: Number of seed nodes to select (default: 10)
-            - maxSteps: Maximum propagation steps (default: 5)
-            - propagationProbability: For IC model (default: 0.1)
-            - thresholdRange: For LT model (default: [0, 0.5])
-    
-    Returns:
-        List of stage dictionaries showing the propagation process
-    """
-    # Validate parameters with defaults
+
     params = params or {}
     k = max(1, min(params.get('seedSize', 10), len(nodes)))
     max_steps = max(1, min(params.get('maxSteps', 5), 20))
     
     try:
-        # Initialize model with parameters
         model_params = {}
         if model_name == "linear_threshold":
             model_params['threshold_range'] = params.get('thresholdRange', [0, 0.5])
@@ -112,14 +83,11 @@ def centrality_heuristic_algorithm(
     except Exception as e:
         raise ValueError(f"Model initialization failed: {str(e)}")
 
-    # Calculate betweenness centrality
     betweenness = calculate_betweenness_centrality(nodes, edges)
     
-    # Sort nodes by betweenness (descending) and select top k
     sorted_nodes = sorted(betweenness.keys(), key=lambda x: betweenness[x], reverse=True)
     seed_nodes = sorted_nodes[:k]
     
-    # Initialize stages
     stages = [{
         "stage": 1,
         "selected_nodes": seed_nodes,
@@ -128,7 +96,6 @@ def centrality_heuristic_algorithm(
         "centrality_scores": {n: betweenness[n] for n in seed_nodes}
     }]
 
-    # Propagation steps
     A = set(seed_nodes)
     for step in range(2, max_steps + 1):
         try:

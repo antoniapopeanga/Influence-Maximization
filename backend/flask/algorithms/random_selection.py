@@ -13,29 +13,12 @@ def random_selection_algorithm(
     model_name: str,
     params: Dict[str, Union[int, float]]
 ) -> List[Dict[str, Union[int, List[Union[str, int]], str]]]:
-    """
-    Random Selection algorithm for influence maximization
-    
-    Args:
-        nodes: List of node IDs
-        edges: List of edge tuples (source, target)
-        model_name: Either 'linear_threshold' or 'independent_cascade'
-        params: Dictionary of parameters including:
-            - seedSize: Number of seed nodes to select (default: 10)
-            - maxSteps: Maximum propagation steps (default: 5)
-            - propagationProbability: For IC model (default: 0.1)
-            - thresholdRange: For LT model (default: [0, 0.5])
-    
-    Returns:
-        List of stage dictionaries showing the propagation process
-    """
-    # Validate parameters with defaults
+
     params = params or {}
     k = max(1, min(params.get('seedSize', 10), len(nodes)))
     max_steps = max(1, min(params.get('maxSteps', 5), 20))
     
     try:
-        # Initialize model with parameters
         model_params = {}
         if model_name == "linear_threshold":
             model_params['threshold_range'] = params.get('thresholdRange', [0, 0.5])
@@ -48,10 +31,8 @@ def random_selection_algorithm(
     except Exception as e:
         raise ValueError(f"Model initialization failed: {str(e)}")
 
-    # Randomly select seed nodes
     seed_nodes = random.sample(nodes, k) if nodes else []
     
-    # Initialize stages
     stages = [{
         "stage": 1,
         "selected_nodes": seed_nodes,
@@ -59,7 +40,6 @@ def random_selection_algorithm(
         "total_activated": len(seed_nodes)
     }]
 
-    # Propagation steps
     active_nodes = set(seed_nodes)
     for step in range(2, max_steps + 1):
         try:

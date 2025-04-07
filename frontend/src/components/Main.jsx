@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Button } from 'antd'; // Import Modal and Button from Ant Design
+import { Modal, Button } from 'antd';
 import Sidebar from './Sidebar';
 import PreviewComponent from './PreviewComponent';
 import axios from 'axios';
@@ -34,7 +34,6 @@ const Main = () => {
           parameters: parameters[algorithm] || {}
         });
   
-        // Print the exact response from the algorithm in the console
         console.log(`Algorithm: ${algorithm}`, response.data);
   
         responses[algorithm] = response.data;
@@ -46,7 +45,6 @@ const Main = () => {
         algorithm_results: responses
       });
   
-      // Print all algorithm results in the console
       console.log("Final algorithm results:", responses);
   
     } catch (error) {
@@ -61,7 +59,6 @@ const Main = () => {
   };
   
 
-// Main.js (updated return section)
 return (
   <div className="main-container">
     <div className="sidebar-container">
@@ -69,7 +66,6 @@ return (
     </div>
     
     <div className="content-container">
-        {/* Display error message if there is an error */}
         {error && (
           <div className="error-container">
             <h3>Error: {error.message}</h3>
@@ -90,7 +86,6 @@ return (
         )}
 
 
-      {/* PreviewComponent now wrapped in a dedicated div */}
       <div className="preview-wrapper">
         <PreviewComponent 
           graphData={graphData} 
@@ -101,7 +96,7 @@ return (
 
       </div>
 
-        {/* Button container for both buttons */}
+        {/* Button container*/}
         {graphData && (
           <div className="action-buttons-container">
             <Button 
@@ -123,7 +118,7 @@ return (
           </div>
         )}
 
-        {/* Statistics Modal (unchanged) */}
+        {/* Statistics Modal */}
         <Modal
           title="Algorithm Performance Comparison"
           open={isStatsModalOpen}
@@ -135,7 +130,7 @@ return (
           <StatisticsComparison algorithmResults={graphData?.algorithm_results} />
         </Modal>
 
-        {/* New Charts Modal */}
+        {/*Charts Modal */}
         <Modal
           title="Influence Spread Visualization"
           open={isChartsModalOpen}

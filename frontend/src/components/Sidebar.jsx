@@ -102,7 +102,6 @@ const Sidebar = ({ onSubmit }) => {
       newValues = currentValues.filter(val => val !== optionValue);
     }
     
-    // If all are unchecked, keep at least one selected
     if (newValues.length === 0) {
       newValues = [algorithmParameters[algorithm].find(p => p.name === paramName).options[0]];
     }

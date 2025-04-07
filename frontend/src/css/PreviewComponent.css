@@ -38,19 +38,18 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  position: fixed; /* Changed from absolute to fixed */
+  position: fixed;
   bottom: 20px;
   right: 20px;
   border-radius: 8px;
-  z-index: 1000; /* Increased z-index */
+  z-index: 1000;
   max-width: 300px;
 }
 
-/* Ensure loading overlay doesn't cover control panel */
 .loading-overlay {
   position: fixed;
   top: 0;
-  left: 300px; /* Account for sidebar */
+  left: 300px;
   right: 0;
   bottom: 0;
   display: flex;
@@ -58,16 +57,14 @@
   align-items: center;
   justify-content: center;
   background-color: rgba(0, 0, 0, 0.7);
-  z-index: 100; /* Lower than control panel */
+  z-index: 100;
 }
 
-/* Add this to prevent ForceGraph3D from covering elements */
 canvas {
   position: relative;
   z-index: 1 !important;
 }
 
-/* Rest of your existing styles... */
 .algorithm-stage-info {
   margin-bottom: 15px;
   padding: 10px;
@@ -98,8 +95,6 @@ canvas {
   cursor: not-allowed;
 }
 
-
-
 .seed-size-info {
   position: absolute;
   top: 20px;
@@ -120,19 +115,4 @@ canvas {
 
 .seed-size-info.hide {
   opacity: 0;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .control-panel {
-    position: relative;
-    bottom: auto;
-    right: auto;
-    max-width: 100%;
-    margin: 10px;
-  }
-  
-  .loading-overlay {
-    left: 0;
-  }
 }

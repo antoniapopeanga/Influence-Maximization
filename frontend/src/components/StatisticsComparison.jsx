@@ -12,26 +12,22 @@ const StatisticsComparison = ({ algorithmResults }) => {
     </div>
   );
 
-  // Prepare data structure for nested tables
-  const algorithmData = Object.entries(algorithmResults).map(([algorithm, results]) => {
-    // Group results by seed size
-    const seedSizeGroups = results.results.reduce((acc, result) => {
-      const seedSize = result.seed_size;
-      if (!acc[seedSize]) {
-        acc[seedSize] = [];
-      }
-      acc[seedSize].push(result);
-      return acc;
-    }, {});
+  const seedSizeMap = {};
 
-    return {
-      algorithm,
-      seedSizeGroups
-    };
+  Object.entries(algorithmResults).forEach(([algorithm, results]) => {
+    results.results.forEach(result => {
+      const seedSize = result.seed_size;
+      if (!seedSizeMap[seedSize]) {
+        seedSizeMap[seedSize] = [];
+      }
+      seedSizeMap[seedSize].push({
+        algorithm,
+        ...result
+      });
+    });
   });
 
-  // Columns for the main table
-  const mainColumns = [
+  const columns = [
     {
       title: 'Algorithm',
       dataIndex: 'algorithm',
@@ -41,30 +37,6 @@ const StatisticsComparison = ({ algorithmResults }) => {
           {text.replace(/_/g, ' ')}
         </Tag>
       ),
-    },
-    {
-      title: 'Seed Sizes Tested',
-      dataIndex: 'seedSizes',
-      key: 'seedSizes',
-      render: (_, record) => (
-        <div>
-          {Object.keys(record.seedSizeGroups).map(size => (
-            <Tag key={size} style={{ marginBottom: 4 }}>
-              {size} nodes
-            </Tag>
-          ))}
-        </div>
-      ),
-    },
-  ];
-
-  // Columns for the nested tables (per seed size)
-  const nestedColumns = [
-    {
-      title: 'Seed Size',
-      dataIndex: 'seed_size',
-      key: 'seed_size',
-      render: (size) => `${size} nodes`
     },
     {
       title: 'Spread',
@@ -86,60 +58,30 @@ const StatisticsComparison = ({ algorithmResults }) => {
           {(record.metrics.spread / record.metrics.runtime).toFixed(6)}
         </Tooltip>
       ),
-      sorter: (a, b) => 
-        (a.metrics.spread / a.metrics.runtime) - 
-        (b.metrics.spread / b.metrics.runtime)
+      sorter: (a, b) =>
+        (a.metrics.spread / a.metrics.runtime) -
+        (b.metrics.spread / b.metrics.runtime),
     },
-    {
-      title: 'Seed Nodes',
-      dataIndex: ['metrics', 'seed_nodes'],
-      key: 'seed_nodes',
-      render: (nodes) => (
-        <Tooltip title={nodes.join(', ')}>
-          <span className="seed-count">
-            {nodes.length} nodes
-          </span>
-        </Tooltip>
-      )
-    }
   ];
 
   return (
-    <Collapse ghost defaultActiveKey={algorithmData.map((_, index) => index.toString())}>
-      {algorithmData.map((algorithm, index) => (
-        <Panel 
-          header={
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <Tag color={getAlgorithmColor(algorithm.algorithm)}>
-                {algorithm.algorithm.replace(/_/g, ' ')}
-              </Tag>
-              <span style={{ marginLeft: 8 }}>
-                ({Object.keys(algorithm.seedSizeGroups).length} seed sizes tested)
-              </span>
-            </div>
-          }
-          key={index.toString()}
-        >
-          {Object.entries(algorithm.seedSizeGroups).map(([seedSize, results]) => (
-            <div key={seedSize} style={{ marginBottom: 16 }}>
-              <h4>Seed Size: {seedSize} nodes</h4>
-              <Table
-                columns={nestedColumns}
-                dataSource={results}
-                rowKey={(record) => `${record.seed_size}-${record.metrics.spread}`}
-                pagination={false}
-                size="small"
-                bordered
-              />
-            </div>
-          ))}
+    <Collapse ghost defaultActiveKey={Object.keys(seedSizeMap)}>
+      {Object.entries(seedSizeMap).map(([seedSize, records]) => (
+        <Panel header={`Seed Size: ${seedSize} nodes`} key={seedSize}>
+          <Table
+            columns={columns}
+            dataSource={records}
+            rowKey={(record) => `${record.algorithm}-${record.seed_size}`}
+            pagination={false}
+            size="small"
+            bordered
+          />
         </Panel>
       ))}
     </Collapse>
   );
 };
 
-// Helper function
 const getAlgorithmColor = (algorithm) => {
   const colors = {
     classic_greedy: "rgb(255, 105, 180)", // hot pink

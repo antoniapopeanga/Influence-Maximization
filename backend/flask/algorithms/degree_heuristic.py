@@ -12,29 +12,12 @@ def degree_heuristic_algorithm(
     model_name: str,
     params: Dict[str, Union[int, float]]
 ) -> List[Dict[str, Union[int, List[Union[str, int]], str]]]:
-    """
-    Simple Heuristic algorithm for influence maximization (Degree-based)
-    
-    Args:
-        nodes: List of node IDs
-        edges: List of edge tuples (source, target)
-        model_name: Either 'linear_threshold' or 'independent_cascade'
-        params: Dictionary of parameters including:
-            - seedSize: Number of seed nodes to select (default: 10)
-            - maxSteps: Maximum propagation steps (default: 5)
-            - propagationProbability: For IC model (default: 0.1)
-            - thresholdRange: For LT model (default: [0, 0.5])
-    
-    Returns:
-        List of stage dictionaries showing the propagation process
-    """
-    # Validate parameters with defaults
+
     params = params or {}
     k = max(1, min(params.get('seedSize', 10), len(nodes)))
     max_steps = max(1, min(params.get('maxSteps', 5), 20))
     
     try:
-        # Initialize model with parameters
         model_params = {}
         if model_name == "linear_threshold":
             model_params['threshold_range'] = params.get('thresholdRange', [0, 0.5])
@@ -47,17 +30,16 @@ def degree_heuristic_algorithm(
     except Exception as e:
         raise ValueError(f"Model initialization failed: {str(e)}")
 
-    # Calculate degree centrality (number of connections for each node)
+    # calculam gradul pentru fiecare nod
     node_degrees = {node: 0 for node in nodes}
     for u, v in edges:
         node_degrees[u] += 1
         node_degrees[v] += 1
     
-    # Sort nodes by degree (descending) and select top k
+    # sortam descrescator si selectam primele k noduri
     sorted_nodes = sorted(node_degrees.keys(), key=lambda x: node_degrees[x], reverse=True)
     seed_nodes = sorted_nodes[:k]
     
-    # Initialize stages
     stages = [{
         "stage": 1,
         "selected_nodes": seed_nodes,
@@ -66,7 +48,6 @@ def degree_heuristic_algorithm(
         "average_degree": sum(node_degrees[n] for n in seed_nodes)/len(seed_nodes) if seed_nodes else 0
     }]
 
-    # Propagation steps
     active_nodes = set(seed_nodes)
     for step in range(2, max_steps + 1):
         try:

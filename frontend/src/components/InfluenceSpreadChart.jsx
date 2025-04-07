@@ -6,7 +6,7 @@ import '../css/InfluenceSpreadChart.css';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
-// Color palette for different algorithms
+
 const algorithmColors = {
     classic_greedy: "rgb(255, 105, 180)", // hot pink
     random_selection: "rgb(50, 205, 50)", // lime green
@@ -25,7 +25,6 @@ const prepareSpreadData = (algorithmResults) => {
     return { labels: [], datasets: [] };
   }
 
-  // Collect all unique seed sizes across all algorithms
   const allSeedSizes = new Set();
   Object.values(algorithmResults).forEach(algorithmData => {
     algorithmData.results?.forEach(result => {
@@ -35,13 +34,11 @@ const prepareSpreadData = (algorithmResults) => {
   const sortedSeedSizes = Array.from(allSeedSizes).sort((a, b) => a - b);
 
   const datasets = Object.entries(algorithmResults).map(([algorithm, algorithmData]) => {
-    // Create a map of seed size to spread for this algorithm
     const spreadBySeedSize = {};
     algorithmData.results?.forEach(result => {
       spreadBySeedSize[result.seed_size] = result.metrics.spread;
     });
 
-    // Fill in data points for all seed sizes
     const data = sortedSeedSizes.map(size => spreadBySeedSize[size] || null);
 
     return {
@@ -60,42 +57,7 @@ const prepareSpreadData = (algorithmResults) => {
   };
 };
 
-const prepareStagesData = (algorithmResults) => {
-  if (!algorithmResults || Object.keys(algorithmResults).length === 0) {
-    return { labels: [], datasets: [] };
-  }
 
-  const datasets = Object.entries(algorithmResults).map(([algorithm, algorithmData]) => {
-    // We'll show the stages for the largest seed size by default
-    const resultsBySeedSize = algorithmData.results || [];
-    const largestSeedSizeResult = resultsBySeedSize.reduce((max, result) => 
-      result.seed_size > (max?.seed_size || 0) ? result : max, null);
-    
-    const stages = largestSeedSizeResult?.stages || [];
-    const data = stages.map(stage => stage.total_activated);
-    const labels = stages.map((_, index) => `Stage ${index + 1}`);
-
-    return {
-      label: `${algorithm.replace(/_/g, ' ')} (${largestSeedSizeResult?.seed_size || '?'} seeds)`,
-      data,
-      borderColor: getAlgorithmColor(algorithm),
-      backgroundColor: getAlgorithmColor(algorithm),
-      fill: false,
-      tension: 0.1
-    };
-  });
-
-  // Get the maximum number of stages to determine labels
-  const maxStages = Math.max(...Object.values(algorithmResults).map(algorithmData => {
-    const results = algorithmData.results || [];
-    return Math.max(...results.map(result => result.stages?.length || 0));
-  }));
-
-  return {
-    labels: Array.from({ length: maxStages }, (_, i) => `Stage ${i + 1}`),
-    datasets
-  };
-};
 
 const InfluenceSpreadChart = ({ algorithmResults }) => {
   if (!algorithmResults || typeof algorithmResults !== 'object' || Object.keys(algorithmResults).length === 0) {
@@ -107,11 +69,9 @@ const InfluenceSpreadChart = ({ algorithmResults }) => {
   }
 
   const spreadData = prepareSpreadData(algorithmResults);
-  const stagesData = prepareStagesData(algorithmResults);
   const hasSpreadData = spreadData.datasets.length > 0 && spreadData.labels.length > 0;
-  const hasStagesData = stagesData.datasets.length > 0 && stagesData.labels.length > 0;
 
-  if (!hasSpreadData && !hasStagesData) {
+  if (!hasSpreadData) {
     return (
       <Card className="chart-card">
         <Empty description="No data available for visualization" />
@@ -179,30 +139,7 @@ const InfluenceSpreadChart = ({ algorithmResults }) => {
     });
   }
 
-  if (hasStagesData) {
-    tabItems.push({
-      key: '2',
-      label: 'Influence Propagation by Stage',
-      children: (
-        <Line 
-          data={stagesData} 
-          options={{
-            ...chartOptions,
-            scales: {
-              ...chartOptions.scales,
-              x: {
-                ...chartOptions.scales.x,
-                title: {
-                  display: true,
-                  text: 'Propagation Stage'
-                }
-              }
-            }
-          }} 
-        />
-      ),
-    });
-  }
+
 
   return (
     <div className="influence-spread-charts">

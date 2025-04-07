@@ -7,11 +7,10 @@
 }
 
 .sidebar-content {
-  height: calc(100vh - 40px); /* Account for padding */
+  height: calc(100vh - 40px);
   overflow-y: auto;
-  padding-right: 8px; /* Prevent content from touching scrollbar */
+  padding-right: 8px;
 }
-
 
 .sidebar h2 {
   margin-top: 0;

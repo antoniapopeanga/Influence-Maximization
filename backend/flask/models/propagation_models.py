@@ -35,26 +35,7 @@ class LinearThresholdModel(PropagationModel):
                     new_active.add(node)
         return list(new_active)
     
-    def compute_influence(self, active_nodes):
-        """Compute the total influence spread from the given active nodes"""
-        # Create a copy of active nodes to track propagation
-        activated = set(active_nodes)
-        queue = list(activated)
-        
-        while queue:
-            node = queue.pop(0)
-            for neighbor in self.get_neighbors(node):
-                if neighbor not in activated:
-                    # Calculate total influence from all active neighbors
-                    total_influence = sum(
-                        self.weights.get((n, neighbor), 0) 
-                        for n in activated if n in self.get_neighbors(neighbor)
-                    )
-                    if total_influence >= self.thresholds[neighbor]:
-                        activated.add(neighbor)
-                        queue.append(neighbor)
-        
-        return len(activated)
+
 
 class IndependentCascadeModel(PropagationModel):
     """Independent Cascade Model"""
@@ -66,33 +47,15 @@ class IndependentCascadeModel(PropagationModel):
 
     def propagate(self, A):
         new_active = set(A)
-        newly_activated = set(A)
-
-        while newly_activated:
-            next_activated = set()
-            for node in newly_activated:
+        frontier = set(A)  # noduri care inca nu au incercat sa isi activeze vecinii
+        
+        while frontier:
+            next_frontier = set()
+            for node in frontier:
                 for neighbor in self.get_neighbors(node):
                     if neighbor not in new_active and random.random() < self.probabilities.get((node, neighbor), 0):
-                        next_activated.add(neighbor)
-            new_active.update(next_activated)
-            newly_activated = next_activated
-
+                        new_active.add(neighbor)
+                        next_frontier.add(neighbor)
+            frontier = next_frontier
+        
         return list(new_active)
-    
-    def compute_influence(self, active_nodes):
-        """Compute the expected influence spread from the given active nodes"""
-        # For IC model, we need to simulate multiple times for accurate expectation
-        # Here we use a simplified version that calculates potential reach
-        activated = set(active_nodes)
-        queue = list(activated)
-        
-        while queue:
-            node = queue.pop(0)
-            for neighbor in self.get_neighbors(node):
-                if neighbor not in activated:
-                    # In IC model, we consider the probability
-                    if random.random() < self.probabilities.get((node, neighbor), 0):
-                        activated.add(neighbor)
-                        queue.append(neighbor)
-        
-        return len(activated)
