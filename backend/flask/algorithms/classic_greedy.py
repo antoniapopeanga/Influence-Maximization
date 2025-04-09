@@ -1,14 +1,14 @@
 import sys
 import json
 import os
-import random
 import logging
 import numpy as np
-
+import multiprocessing as mp
+from functools import partial
 from typing import List, Dict, Set, Tuple, Union
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
 
-# configuram progress logging
 def setup_logging():
     log_dir = os.path.join(os.path.dirname(__file__), 'logs')
     os.makedirs(log_dir, exist_ok=True)
@@ -20,8 +20,7 @@ def setup_logging():
     )
     return log_file
 
-#functie de simulare monte carlo
-#returneaza media propagarilor
+# functia de simulare monte carlo- secventiala
 def monte_carlo_simulation(
     model,
     nodes: Set[Union[str, int]],
@@ -30,13 +29,8 @@ def monte_carlo_simulation(
 ) -> float:
     spreads = []
     for i in range(num_simulations):
-
-        if i % 10 == 0:
-            logging.debug(f"Simulation progress: {i+1}/{num_simulations}")
-
+        # simulam propagarea
         current_seed = seed_nodes.copy()
-        
-        # simulare propagare
         activated = set(current_seed)
         newly_activated = set(current_seed)
         
@@ -49,8 +43,36 @@ def monte_carlo_simulation(
     
     return np.mean(spreads)
 
-#functia algoritmului greedy
-#pentru fiecare nod efectueaza simulari montecarlo si adauga in seed_set nodurile care au cea mai mare influenta la pasul curent
+# evaluarea candidatilor in paralel
+def evaluate_node_influence(args):
+    model, nodes, seed_set, node, num_simulations = args
+    candidate_seeds = seed_set + [node]
+    influence = monte_carlo_simulation(
+        model, 
+        set(nodes), 
+        candidate_seeds, 
+        num_simulations
+    )
+    return node, influence
+
+# evaluarea simularilor in paralel
+def parallel_simulations(args):
+    model, nodes, seed_set, remaining_nodes, num_simulations = args
+    
+    results = []
+    for node in remaining_nodes:
+        candidate_seeds = seed_set + [node]
+        influence = monte_carlo_simulation(
+            model, 
+            set(nodes), 
+            candidate_seeds, 
+            num_simulations
+        )
+        results.append((node, influence))
+    
+    return results
+
+# algoritm greedy cu evaluarea nodurilor paralelizata
 def greedy_influence_maximization(
     nodes: List[Union[str, int]],
     edges: List[Tuple[Union[str, int], Union[str, int]]],
@@ -58,21 +80,22 @@ def greedy_influence_maximization(
     params: Dict[str, Union[int, float]]
 ) -> List[Dict[str, Union[int, List[Union[str, int]], str]]]:
 
-    logging.info("Starting greedy influence maximization algorithm")
+    logging.info("Starting greedy influence maximization algorithm with parallelization")
     k = max(1, min(params.get('seedSize', 10), len(nodes)))
     max_steps = max(1, min(params.get('maxSteps', 5), 20))
     num_simulations = params.get('numSimulations', 50)
+    num_processes = params.get('numProcesses', mp.cpu_count())
+    
+    # multimea de noduri activata per total
+    cumulative_activated = set()
 
-    #actualizam lista tuturor nodurilor activate pentru fiecare etapa
-    cumulative_activated = set() 
-
-    # initializam modelul selectat
+    # initializam modelul ales
     if model_name == "linear_threshold":
-        from propagation_models import LinearThresholdModel
+        from propagation_models import OptimizedLinearThresholdModel
         model_params = {
             'threshold_range': params.get('thresholdRange', [0, 0.5])
         }
-        model = LinearThresholdModel(nodes, edges, **model_params)
+        model = OptimizedLinearThresholdModel(nodes, edges, **model_params)
     elif model_name == "independent_cascade":
         from propagation_models import IndependentCascadeModel
         model_params = {
@@ -87,59 +110,52 @@ def greedy_influence_maximization(
     stages = []
 
     logging.info(f"Beginning seed selection for {len(nodes)} nodes, target {k} seeds")
+    logging.info(f"Using {num_processes} processes for parallel evaluation")
 
-    for stage in range(k):
-        max_node = None
-        max_influence = -1
-        evaluated_nodes = 0
-
-        
-        # evaluam functia de simulare pentru fiecare nod ramas
-        for node in remaining_nodes:
-            evaluated_nodes+=1
-
-            if evaluated_nodes % 5 == 0: 
-              logging.info(f"Stage {stage+1}: Evaluated {evaluated_nodes}/{len(remaining_nodes)} nodes")
-
-            # calculam marginal gain
-            candidate_seeds = seed_set + [node]
-            influence = monte_carlo_simulation(
-                model, 
-                set(nodes), 
-                candidate_seeds, 
-                num_simulations
-            )
+    with mp.Pool(processes=num_processes) as pool:
+        for stage in range(k):
+            logging.info(f"Starting stage {stage+1}/{k}")
             
-            if influence > max_influence:
-                max_influence = influence
-                max_node = node
-        
-        if max_node is None:
-            break
-        
-        # Update seed set
-        seed_set.append(max_node)
-        remaining_nodes.remove(max_node)
-        
-        activated = set(seed_set)
-        for _ in range(max_steps):
-            newly_activated = set(model.propagate(list(activated))) - activated
-            activated.update(newly_activated)
-        
-        # Update activarea totala
-        cumulative_activated.update(activated)
-        
-        # salvam datele fiecarei etape
-        stage_data = {
-            "stage": stage + 1,
-            "selected_nodes": seed_set.copy(),
-            "propagated_nodes": list(cumulative_activated),
-            "total_activated": len(cumulative_activated),
-            "marginal_gain": max_influence
-        }
-        stages.append(stage_data)
+            args_list = [
+                (model, nodes, seed_set, node, num_simulations) 
+                for node in remaining_nodes
+            ]
+            
+            # evaluam nodurile in paralel
+            results = pool.map(evaluate_node_influence, args_list)
+            
+            if not results:
+                break
+                
+            max_node, max_influence = max(results, key=lambda x: x[1])
+            
+            # update multimii de seed cu nodul cu influenta max
+            seed_set.append(max_node)
+            remaining_nodes.remove(max_node)
+            
+            # rulam propagarea pentru a activa nodurile
+            activated = set(seed_set)
+            for _ in range(max_steps):
+                newly_activated = set(model.propagate(list(activated))) - activated
+                activated.update(newly_activated)
+            
+            # update la totalul de noduri activate
+            cumulative_activated.update(activated)
+            
+            # datele pentru fiecare etapa
+            stage_data = {
+                "stage": stage + 1,
+                "selected_nodes": seed_set.copy(),
+                "propagated_nodes": list(cumulative_activated),
+                "total_activated": len(cumulative_activated),
+                "marginal_gain": max_influence
+            }
+            stages.append(stage_data)
+            logging.info(f"Completed stage {stage+1}: selected node {max_node}, total activated: {len(cumulative_activated)}")
     
     return stages
+
+
 
 def main():
     try:
@@ -156,6 +172,10 @@ def main():
         edges = json.loads(sys.argv[2])
         model = sys.argv[3]
         params = json.loads(sys.argv[4])
+        
+        num_cpus = mp.cpu_count()
+        logging.info(f"Running on machine with {num_cpus} CPUs")
+        
         
         stages = greedy_influence_maximization(nodes, edges, model, params)
         

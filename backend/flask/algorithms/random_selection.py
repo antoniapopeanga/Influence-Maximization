@@ -5,7 +5,6 @@ import random
 from typing import List, Dict, Set, Tuple, Union
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
-from propagation_models import LinearThresholdModel, IndependentCascadeModel
 
 def random_selection_algorithm(
     nodes: List[Union[str, int]],
@@ -18,18 +17,21 @@ def random_selection_algorithm(
     k = max(1, min(params.get('seedSize', 10), len(nodes)))
     max_steps = max(1, min(params.get('maxSteps', 5), 20))
     
-    try:
-        model_params = {}
-        if model_name == "linear_threshold":
-            model_params['threshold_range'] = params.get('thresholdRange', [0, 0.5])
-            model = LinearThresholdModel(nodes, edges, **model_params)
-        elif model_name == "independent_cascade":
-            model_params['propagation_probability'] = params.get('propagationProbability', 0.1)
-            model = IndependentCascadeModel(nodes, edges, **model_params)
-        else:
-            raise ValueError(f"Unknown model: {model_name}")
-    except Exception as e:
-        raise ValueError(f"Model initialization failed: {str(e)}")
+    # initializam modelul
+    if model_name == "linear_threshold":
+        from propagation_models import OptimizedLinearThresholdModel
+        model_params = {
+            'threshold_range': params.get('thresholdRange', [0, 0.5])
+        }
+        model = OptimizedLinearThresholdModel(nodes, edges, **model_params)
+    elif model_name == "independent_cascade":
+        from propagation_models import IndependentCascadeModel
+        model_params = {
+            'propagation_probability': params.get('propagationProbability', 0.1)
+        }
+        model = IndependentCascadeModel(nodes, edges, **model_params)
+    else:
+        raise ValueError(f"Unsupported model: {model_name}")
 
     seed_nodes = random.sample(nodes, k) if nodes else []
     
