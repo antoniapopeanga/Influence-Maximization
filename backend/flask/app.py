@@ -13,12 +13,11 @@ CORS(app, origins=["http://localhost:3000"])
 
 DATASET_FOLDER = "../../datasets/csv_files"
 
+#functie care ruleaza un algoritm in functie de parametrii primiti
 def run_single_algorithm(algorithm, G, model, params):
-    """Run a single algorithm with specific parameters and return its results"""
     try:
         start_time = time.time()
         
-        # Prepare the algorithm command
         cmd = [
             'python', f'algorithms/{algorithm}.py',
             json.dumps(list(G.nodes())),
@@ -27,7 +26,6 @@ def run_single_algorithm(algorithm, G, model, params):
             json.dumps(params)
         ]
         
-        # Execute the algorithm
         result_process = subprocess.run(
             cmd,
             capture_output=True,
@@ -35,9 +33,8 @@ def run_single_algorithm(algorithm, G, model, params):
             check=True
         )
         
-        runtime = (time.time() - start_time) * 1000  # Convert to milliseconds
+        runtime = (time.time() - start_time) * 1000
 
-        # Process the output
         stdout_lines = [line.strip() for line in result_process.stdout.split('\n') if line.strip()]
         
         if not stdout_lines:
@@ -50,7 +47,6 @@ def run_single_algorithm(algorithm, G, model, params):
             
         algorithm_stages = json.loads(stdout_lines[-1])
         
-        # Calculate metrics
         seed_nodes = set()
         total_activated = 0
         for stage in algorithm_stages:
@@ -83,13 +79,12 @@ def run_single_algorithm(algorithm, G, model, params):
             "error": str(e)
         }
 
+#endpoint pentru a rula pe rand toti algoritmii
 @app.route("/run-algorithm", methods=["POST"])
 def run_algorithm():
-    """Endpoint for running algorithms with multiple seed sizes"""
     try:
         data = request.json
         
-        # Validate required parameters
         required_fields = ['dataset', 'model', 'algorithm']
         if not all(field in data for field in required_fields):
             return jsonify({
@@ -102,12 +97,10 @@ def run_algorithm():
         selected_algorithm = data['algorithm']
         parameters = data.get('parameters', {})
         
-        # Get seed sizes (default to [5] if not provided)
         seed_sizes = parameters.get('seedSize', [5])
         if not isinstance(seed_sizes, list):
             seed_sizes = [seed_sizes]
 
-        # Load and validate dataset
         try:
             dataset_name, dataset_number = selected_dataset.split(' ')
         except ValueError:
@@ -124,7 +117,6 @@ def run_algorithm():
                 "error": f"Dataset {selected_dataset} not found"
             }), 404
 
-        # Load graph data
         try:
             df = pd.read_csv(dataset_filepath)
             G = nx.Graph()
@@ -136,11 +128,9 @@ def run_algorithm():
             }), 400
 
         all_results = []
-        seed_stages = {}  # Dictionary to store stages by seed size
+        seed_stages = {}
         
-        # Run algorithm for each seed size
         for seed_size in seed_sizes:
-            # Create copy of parameters with current seed size
             current_params = parameters.copy()
             current_params['seedSize'] = seed_size
             
@@ -159,24 +149,22 @@ def run_algorithm():
                 })
                 continue
             
-            # Store stages with seed size as key
             seed_stages[seed_size] = algorithm_result["stages"]
             
             all_results.append({
                 "seed_size": seed_size,
                 "status": "success",
                 "metrics": algorithm_result["metrics"],
-                "stages": algorithm_result["stages"]  # Include stages with each result
+                "stages": algorithm_result["stages"]
             })
 
-        # Prepare successful response
         response = {
             "status": "success",
             "nodes": list(G.nodes()),
             "edges": list(G.edges()),
             "algorithm": selected_algorithm,
-            "results": all_results,  # Each result contains its own stages
-            "stages_by_seed": seed_stages  # Alternative organization of stages
+            "results": all_results,
+            "stages_by_seed": seed_stages
         }
         
         return jsonify(response)

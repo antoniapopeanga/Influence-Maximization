@@ -24,7 +24,6 @@ const Sidebar = ({ onSubmit }) => {
   const algorithmParameters = {
     classic_greedy: [
       { name: "seedSize", label: "Seed Set Size", type: "checkbox-group", options: [3, 5, 10, 15, 20] },
-      { name: "maxSteps", label: "Max Propagation Steps", type: "number", default: 5, min: 1, max: 10 }
     ],
     random_selection: [
       { name: "seedSize", label: "Number of Seeds", type: "checkbox-group", options: [3, 5, 10, 15, 20] }

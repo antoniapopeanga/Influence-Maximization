@@ -30,7 +30,7 @@ def setup_logging():
     
     return log_file
 
-# Simplified node for the heap - minimal overhead
+# heap node
 class CELFNode:
     __slots__ = ['node_id', 'marginal_gain', 'last_checked']
     
@@ -42,20 +42,17 @@ class CELFNode:
     def __lt__(self, other):
         return self.marginal_gain > other.marginal_gain  # Max-heap
 
-# Monte Carlo simulation function - batch version for faster evaluation
+# functie pentru simularea Monte Carlo pe bucati
 def batch_evaluate_nodes(args):
     model, nodes, seed_set, candidates, num_simulations, max_steps = args
     
-    # Calculate spread of current seed set once (baseline)
     baseline_spread = monte_carlo_simulation(model, nodes, seed_set, num_simulations, max_steps)
     
     results = []
     for node in candidates:
-        # Skip if already in seed set
         if node in seed_set:
             continue
             
-        # Evaluate the node's marginal gain
         candidate_seeds = seed_set + [node]
         spread = monte_carlo_simulation(model, nodes, candidate_seeds, num_simulations, max_steps)
         marginal_gain = spread - baseline_spread
@@ -64,7 +61,6 @@ def batch_evaluate_nodes(args):
     
     return results
 
-# Simplified Monte Carlo with bounded propagation steps
 def monte_carlo_simulation(
     model,
     nodes: Set[Union[str, int]],
@@ -72,14 +68,13 @@ def monte_carlo_simulation(
     num_simulations: int = 10,
     max_steps: int = 5
 ) -> float:
-    """Run bounded Monte Carlo simulations to estimate influence spread."""
     spreads = []
     for _ in range(num_simulations):
-        # Initialize with seed nodes
+      
         activated = set(seed_nodes)
         current_frontier = set(seed_nodes)
         
-        # Run propagation for limited steps
+        # rulam propagarea pentru max_steps
         for _ in range(max_steps):
             if not current_frontier:
                 break
@@ -95,24 +90,15 @@ def monte_carlo_simulation(
     
     return np.mean(spreads)
 
-def hyper_optimized_celf(
+def celf(
     nodes: List[Union[str, int]],
     edges: List[Tuple[Union[str, int], Union[str, int]]],
     model_name: str,
     params: Dict[str, Union[int, float]]
 ) -> List[Dict[str, Union[int, List[Union[str, int]], str]]]:
-    """
-    Fully optimized CELF implementation that matches greedy's efficiency.
-    
-    Key optimizations:
-    1. Bounded propagation with max_steps (like greedy)
-    2. Simplified, efficient data structures
-    3. Optimized parallelization strategy
-    4. Batched node evaluation
-    5. Minimal heap operations
-    """
+   
     start_time = time.time()
-    logging.info("Starting Hyper-Optimized CELF algorithm")
+    logging.info("Starting CELF algorithm")
     
     # Parameters
     k = max(1, min(params.get('seedSize', 10), len(nodes)))
@@ -122,7 +108,7 @@ def hyper_optimized_celf(
     
     logging.info(f"Parameters: k={k}, num_simulations={num_simulations}, max_steps={max_steps}")
 
-    # Initialize the propagation model
+    # initializare model de propagare
     if model_name == "linear_threshold":
         from propagation_models import OptimizedLinearThresholdModel
         model_params = {
@@ -138,17 +124,16 @@ def hyper_optimized_celf(
     else:
         raise ValueError(f"Unsupported model: {model_name}")
 
-    # Initialize for CELF algorithm
     seed_set = []
     remaining_nodes = set(nodes)
     stages = []
     cumulative_activated = set()
     celf_queue = []
     
-    # Calculate initial marginal gains for all nodes using batched parallel evaluation
+
     logging.info("Calculating initial marginal gains")
     
-    # Process nodes in batches for better parallelization
+    #calculam castigurile initiale folosind varianta batch size a simularii monte carlo
     batch_size = min(len(nodes) // num_processes, 100) 
     if batch_size < 1:
         batch_size = 1
@@ -159,13 +144,13 @@ def hyper_optimized_celf(
         batch_args = [(model, set(nodes), seed_set, batch, num_simulations, max_steps) for batch in node_batches]
         batch_results = pool.map(batch_evaluate_nodes, batch_args)
     
-    # Combine results and build the queue
+    # construim heap-ul
     for batch_result in batch_results:
         for node_id, gain in batch_result:
             celf_node = CELFNode(node_id, gain)
             heapq.heappush(celf_queue, celf_node)
     
-    # Main CELF loop
+    #vom recalcula castigurile doar atunci cand adaugam un nod nou in seed set
     for iteration in range(k):
         if not celf_queue:
             logging.warning("Queue exhausted before reaching k seeds")
@@ -174,25 +159,23 @@ def hyper_optimized_celf(
         best_node = None
         evaluations = 0
         
-        # Find the best node using lazy forward evaluation
         while celf_queue:
             evaluations += 1
             current_node = heapq.heappop(celf_queue)
             
-            # Skip nodes already in seed set
             if current_node.node_id in seed_set:
                 continue
                 
-            # If node was already evaluated in this iteration, it's the best one
+            # daca nodul din capul heap-ului a ramas acelasi este considerat cel cu castigul cel mai mare
             if current_node.last_checked == iteration:
                 best_node = current_node
                 break
                 
-            # Otherwise, reevaluate the node's marginal gain
-            # Calculate new spread with this node added to seed set
+            #daca heap head s-a schimbat vom recalcula spread-ul curent
+
+            #vom recalcula si spread-ul ce contine si nodul curent
             candidate_seeds = seed_set + [current_node.node_id]
             
-            # Calculate current spread and candidate spread
             current_spread = monte_carlo_simulation(
                 model, set(nodes), seed_set, num_simulations, max_steps
             )
@@ -201,23 +184,21 @@ def hyper_optimized_celf(
                 model, set(nodes), candidate_seeds, num_simulations, max_steps
             )
             
-            # Update node's marginal gain
+            # re-actualizam castigul nodului curent
             current_node.marginal_gain = candidate_spread - current_spread
             current_node.last_checked = iteration
             
-            # Re-insert into the queue
+            # il adaugam inapoi in heap
             heapq.heappush(celf_queue, current_node)
             
-        # If we couldn't find a best node, break
         if not best_node:
             break
             
-        # Add the best node to the seed set
+        # adaugam in seed set nodul cu castigul cel mai mare daca a fost gasit
         seed_set.append(best_node.node_id)
         remaining_nodes.remove(best_node.node_id)
         
-        # Run propagation to get current activated nodes
-        # Using bounded propagation (max_steps) like in greedy
+        # rulam propagarea pentru a vedea cate noduri au fost activate la aceasta etapa
         activated = set(seed_set)
         for _ in range(max_steps):
             newly_activated = set(model.propagate(list(activated))) - activated
@@ -225,10 +206,9 @@ def hyper_optimized_celf(
                 break
             activated.update(newly_activated)
         
-        # Update cumulative activated set
+        # actualizam multimea totala de noduri activate
         cumulative_activated.update(activated)
         
-        # Record stage results
         stage_data = {
             "stage": iteration + 1,
             "selected_nodes": seed_set.copy(),
@@ -254,16 +234,16 @@ if __name__ == "__main__":
     
     try:
         if len(sys.argv) != 5:
-            raise ValueError("Usage: python hyper_optimized_celf.py <nodes_json> <edges_json> <model> <params_json>")
+            raise ValueError("Usage: python celf.py <nodes_json> <edges_json> <model> <params_json>")
             
         nodes = json.loads(sys.argv[1])
         edges = json.loads(sys.argv[2])
         model = sys.argv[3]
         params = json.loads(sys.argv[4])
         
-        stages = hyper_optimized_celf(nodes, edges, model, params)
+        stages = celf(nodes, edges, model, params)
         
-        result_file = os.path.join(os.path.dirname(log_file), 'hyper_optimized_celf_results.json')
+        result_file = os.path.join(os.path.dirname(log_file), 'celf_results.json')
         with open(result_file, 'w') as f:
             json.dump(stages, f, indent=2)
         

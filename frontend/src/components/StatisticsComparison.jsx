@@ -88,7 +88,7 @@ const getAlgorithmColor = (algorithm) => {
     random_selection: "rgb(50, 205, 50)", // lime green
     degree_heuristic: "rgb(79, 15, 206)", // medium purple
     centrality_heuristic: "rgb(255, 215, 0)", // gold
-    celf: "rgb(63, 245, 221)", // turqoise
+    celf: "rgb(19, 192, 169)", // turqoise
   };
   return colors[algorithm] || 'geekblue';
 };
