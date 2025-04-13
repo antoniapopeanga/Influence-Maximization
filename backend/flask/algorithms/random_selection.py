@@ -12,7 +12,7 @@ def random_selection_algorithm(
     model_name: str,
     params: Dict[str, Union[int, float]]
 ) -> List[Dict[str, Union[int, List[Union[str, int]], str]]]:
-
+    
     params = params or {}
     k = max(1, min(params.get('seedSize', 10), len(nodes)))
     max_steps = max(1, min(params.get('maxSteps', 5), 20))
@@ -32,7 +32,7 @@ def random_selection_algorithm(
         model = IndependentCascadeModel(nodes, edges, **model_params)
     else:
         raise ValueError(f"Unsupported model: {model_name}")
-
+    
     seed_nodes = random.sample(nodes, k) if nodes else []
     
     stages = [{
@@ -41,7 +41,7 @@ def random_selection_algorithm(
         "propagated_nodes": seed_nodes,
         "total_activated": len(seed_nodes)
     }]
-
+    
     active_nodes = set(seed_nodes)
     for step in range(2, max_steps + 1):
         try:
@@ -54,22 +54,32 @@ def random_selection_algorithm(
         except Exception as e:
             print(f"Error during propagation step {step}: {str(e)}")
             break
-
+    
     return stages
 
 if __name__ == "__main__":
     try:
         if len(sys.argv) != 5:
-            raise ValueError("Usage: python random_selection.py <nodes_json> <edges_json> <model> <params_json>")
-            
-        nodes = json.loads(sys.argv[1])
-        edges = json.loads(sys.argv[2])
+            raise ValueError("Usage: python random_selection.py <nodes_file_path> <edges_file_path> <model> <params_file_path>")
+        
+        # Read nodes from file path
+        with open(sys.argv[1], 'r') as nodes_file:
+            nodes = json.load(nodes_file)
+        
+        # Read edges from file path
+        with open(sys.argv[2], 'r') as edges_file:
+            edges = json.load(edges_file)
+        
+        # Get model name from command line
         model = sys.argv[3]
-        params = json.loads(sys.argv[4])
+        
+        # Read params from file path
+        with open(sys.argv[4], 'r') as params_file:
+            params = json.load(params_file)
         
         if not isinstance(nodes, list) or not isinstance(edges, list):
             raise ValueError("Nodes and edges must be lists")
-            
+        
         stages = random_selection_algorithm(nodes, edges, model, params)
         print(json.dumps(stages))
         

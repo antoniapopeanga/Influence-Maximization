@@ -15,17 +15,35 @@ DATASET_FOLDER = "../../datasets/csv_files"
 
 #functie care ruleaza un algoritm in functie de parametrii primiti
 def run_single_algorithm(algorithm, G, model, params):
+    """Run a single algorithm with specific parameters and return its results"""
     try:
         start_time = time.time()
         
+        # Create temporary files for nodes and edges
+        import tempfile
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as nodes_file:
+            json.dump(list(G.nodes()), nodes_file)
+            nodes_path = nodes_file.name
+            
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as edges_file:
+            json.dump(list(G.edges()), edges_file)
+            edges_path = edges_file.name
+            
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as params_file:
+            json.dump(params, params_file)
+            params_path = params_file.name
+        
+        # Prepare the algorithm command with file paths instead of direct JSON
         cmd = [
             'python', f'algorithms/{algorithm}.py',
-            json.dumps(list(G.nodes())),
-            json.dumps(list(G.edges())),
+            nodes_path,
+            edges_path,
             model,
-            json.dumps(params)
+            params_path
         ]
         
+        # Execute the algorithm
         result_process = subprocess.run(
             cmd,
             capture_output=True,
@@ -33,8 +51,17 @@ def run_single_algorithm(algorithm, G, model, params):
             check=True
         )
         
-        runtime = (time.time() - start_time) * 1000
+        runtime = (time.time() - start_time) * 1000  # Convert to milliseconds
 
+        # Clean up temporary files
+        try:
+            os.unlink(nodes_path)
+            os.unlink(edges_path)
+            os.unlink(params_path)
+        except Exception as e:
+            print(f"Warning: Failed to clean up temp files: {e}")
+
+        # Process the output
         stdout_lines = [line.strip() for line in result_process.stdout.split('\n') if line.strip()]
         
         if not stdout_lines:
@@ -47,6 +74,7 @@ def run_single_algorithm(algorithm, G, model, params):
             
         algorithm_stages = json.loads(stdout_lines[-1])
         
+        # Calculate metrics
         seed_nodes = set()
         total_activated = 0
         for stage in algorithm_stages:

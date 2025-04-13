@@ -165,17 +165,23 @@ def main():
         if len(sys.argv) != 5:
             raise ValueError(
                 "Usage: python influence_propagation.py "
-                "<nodes_json> <edges_json> <model> <params_json>"
+                "<nodes_file_path> <edges_file_path> <model> <params_file_path>"
             )
         
-        nodes = json.loads(sys.argv[1])
-        edges = json.loads(sys.argv[2])
+        # Read from file paths instead of direct JSON strings
+        with open(sys.argv[1], 'r') as nodes_file:
+            nodes = json.load(nodes_file)
+        
+        with open(sys.argv[2], 'r') as edges_file:
+            edges = json.load(edges_file)
+        
         model = sys.argv[3]
-        params = json.loads(sys.argv[4])
+        
+        with open(sys.argv[4], 'r') as params_file:
+            params = json.load(params_file)
         
         num_cpus = mp.cpu_count()
         logging.info(f"Running on machine with {num_cpus} CPUs")
-        
         
         stages = greedy_influence_maximization(nodes, edges, model, params)
         
