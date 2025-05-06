@@ -7,21 +7,70 @@ import subprocess
 import os
 import json
 import time
+import dill
+import sys
+import uuid
+import hashlib
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000"])
 
 DATASET_FOLDER = "../../datasets/csv_files"
 
-#functie care ruleaza un algoritm in functie de parametrii primiti
-def run_single_algorithm(algorithm, G, model, params):
-    """Run a single algorithm with specific parameters and return its results"""
+# Global model cache
+MODEL_CACHE = {}
+
+def get_cache_key(dataset, model_name, params):
+
+    model_params = {}
+    if model_name == "linear_threshold":
+        model_params["threshold_range"] = params.get("thresholdRange", [0, 0.5])
+    elif model_name == "independent_cascade":
+        model_params["propagation_probability"] = params.get("propagationProbability", 0.1)
+    
+    # cheia pentru instanta modelului
+    key_string = f"{dataset}_{model_name}_{json.dumps(model_params, sort_keys=True)}"
+    
+    return hashlib.md5(key_string.encode()).hexdigest()
+
+def initialize_model(G, model_name, params):
+    
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'models')))
+    
+    nodes = list(G.nodes())
+    edges = list(G.edges())
+    
+    if model_name == "linear_threshold":
+        from propagation_models import OptimizedLinearThresholdModel
+        model_params = {
+            'threshold_range': params.get('thresholdRange', [0, 0.5])
+        }
+        model = OptimizedLinearThresholdModel(nodes, edges, **model_params)
+    elif model_name == "independent_cascade":
+        from propagation_models import IndependentCascadeModel
+        model_params = {
+            'propagation_probability': params.get('propagationProbability', 0.1)
+        }
+        model = IndependentCascadeModel(nodes, edges, **model_params)
+    else:
+        raise ValueError(f"Unsupported model: {model_name}")
+    
+    model_id = str(uuid.uuid4())
+    model._model_id = model_id    
+    return model
+
+def run_single_algorithm(algorithm, G, initialized_model, params):
     try:
+
         start_time = time.time()
         
-        # Create temporary files for nodes and edges
+        # fisierele temporare pentru pregatirea datelor grafului
         import tempfile
         
+        with tempfile.NamedTemporaryFile(mode='wb', suffix='.pkl', delete=False) as model_file:
+            dill.dump(initialized_model, model_file)
+            model_path = model_file.name
+            
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as nodes_file:
             json.dump(list(G.nodes()), nodes_file)
             nodes_path = nodes_file.name
@@ -34,34 +83,37 @@ def run_single_algorithm(algorithm, G, model, params):
             json.dump(params, params_file)
             params_path = params_file.name
         
-        # Prepare the algorithm command with file paths instead of direct JSON
+        python_path = sys.executable
+        
         cmd = [
-            'python', f'algorithms/{algorithm}.py',
+            python_path, f'algorithms/{algorithm}.py',
             nodes_path,
             edges_path,
-            model,
+            model_path,
             params_path
         ]
         
-        # Execute the algorithm
+        # executarea scriptului ca sub-proces
         result_process = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            check=True
+            check=True,
+            env=os.environ.copy()
         )
         
-        runtime = (time.time() - start_time) * 1000  # Convert to milliseconds
+        
+        runtime = (time.time() - start_time) * 1000
 
-        # Clean up temporary files
+        # stergerea fisierelor temporare
         try:
             os.unlink(nodes_path)
             os.unlink(edges_path)
+            os.unlink(model_path)
             os.unlink(params_path)
         except Exception as e:
-            print(f"Warning: Failed to clean up temp files: {e}")
+            print(f"[DEBUG] Warning: Failed to clean up temp files: {e}")
 
-        # Process the output
         stdout_lines = [line.strip() for line in result_process.stdout.split('\n') if line.strip()]
         
         if not stdout_lines:
@@ -72,9 +124,14 @@ def run_single_algorithm(algorithm, G, model, params):
                 "stderr": result_process.stderr
             }
             
-        algorithm_stages = json.loads(stdout_lines[-1])
+        # parsam rezultatul algoritmului
+        try:
+            algorithm_output = json.loads(stdout_lines[-1])
+            algorithm_stages = algorithm_output.get("stages", [])
+        except (json.JSONDecodeError, KeyError):
+            algorithm_stages = json.loads(stdout_lines[-1])
         
-        # Calculate metrics
+        # calcularea metricilor
         seed_nodes = set()
         total_activated = 0
         for stage in algorithm_stages:
@@ -95,6 +152,7 @@ def run_single_algorithm(algorithm, G, model, params):
         }
 
     except subprocess.CalledProcessError as e:
+        print(f"[DEBUG] Subprocess error: {e}")
         return {
             "status": "error",
             "error": "Algorithm execution failed",
@@ -110,8 +168,11 @@ def run_single_algorithm(algorithm, G, model, params):
 #endpoint pentru a rula pe rand toti algoritmii
 @app.route("/run-algorithm", methods=["POST"])
 def run_algorithm():
+    global MODEL_CACHE
+    
     try:
         data = request.json
+        print(f"[DEBUG] Received request: {data}")
         
         required_fields = ['dataset', 'model', 'algorithm']
         if not all(field in data for field in required_fields):
@@ -124,6 +185,9 @@ def run_algorithm():
         selected_model = data['model']
         selected_algorithm = data['algorithm']
         parameters = data.get('parameters', {})
+        
+        # generarea cheii pentru a salva in cache modelul
+        cache_key = get_cache_key(selected_dataset, selected_model, parameters)
         
         seed_sizes = parameters.get('seedSize', [5])
         if not isinstance(seed_sizes, list):
@@ -155,9 +219,26 @@ def run_algorithm():
                 "error": f"Failed to load graph data: {str(e)}"
             }), 400
 
+        # verificam daca modelul e in cache
+        if cache_key in MODEL_CACHE:
+            initialized_model = MODEL_CACHE[cache_key]
+            model_id = getattr(initialized_model, '_model_id', 'Unknown')
+        else:
+            # initializam modelul O SINGURA DATA pentru toate scripturile
+            try:
+                initialized_model = initialize_model(G, selected_model, parameters)
+                MODEL_CACHE[cache_key] = initialized_model
+                model_id = getattr(initialized_model, '_model_id', 'Unknown')
+            except Exception as e:
+                return jsonify({
+                    "status": "error",
+                    "error": f"Failed to initialize model: {str(e)}"
+                }), 400
+
         all_results = []
         seed_stages = {}
         
+        # rulam algoritmii cu modelul deja initializat
         for seed_size in seed_sizes:
             current_params = parameters.copy()
             current_params['seedSize'] = seed_size
@@ -165,7 +246,7 @@ def run_algorithm():
             algorithm_result = run_single_algorithm(
                 selected_algorithm, 
                 G, 
-                selected_model, 
+                initialized_model,
                 current_params
             )
             
@@ -192,7 +273,9 @@ def run_algorithm():
             "edges": list(G.edges()),
             "algorithm": selected_algorithm,
             "results": all_results,
-            "stages_by_seed": seed_stages
+            "stages_by_seed": seed_stages,
+            "model_id": model_id,
+            "cache_key": cache_key
         }
         
         return jsonify(response)

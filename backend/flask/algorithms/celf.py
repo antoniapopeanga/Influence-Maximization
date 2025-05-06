@@ -7,8 +7,17 @@ import numpy as np
 import time
 import multiprocessing as mp
 from typing import List, Dict, Set, Tuple, Union
+import dill
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
+
+# importam modelele de difuzie
+try:
+    from propagation_models import OptimizedLinearThresholdModel, IndependentCascadeModel
+    print("[DEBUG] Successfully pre-imported propagation_models", file=sys.stderr)
+except ImportError as e:
+    print(f"[DEBUG] Failed to pre-import propagation_models: {e}", file=sys.stderr)
+
 
 def setup_logging():
     log_dir = os.path.join(os.path.dirname(__file__), 'logs')
@@ -93,14 +102,14 @@ def monte_carlo_simulation(
 def celf(
     nodes: List[Union[str, int]],
     edges: List[Tuple[Union[str, int], Union[str, int]]],
-    model_name: str,
+    model,  # Now accepting a pre-initialized model object
     params: Dict[str, Union[int, float]]
 ) -> List[Dict[str, Union[int, List[Union[str, int]], str]]]:
    
     start_time = time.time()
     logging.info("Starting CELF algorithm")
     
-    # Parameters
+    # Parametrii
     k = max(1, min(params.get('seedSize', 10), len(nodes)))
     max_steps = max(1, min(params.get('maxSteps', 5), 20))
     num_simulations = params.get('numSimulations', 50)
@@ -108,28 +117,11 @@ def celf(
     
     logging.info(f"Parameters: k={k}, num_simulations={num_simulations}, max_steps={max_steps}")
 
-    # initializare model de propagare
-    if model_name == "linear_threshold":
-        from propagation_models import OptimizedLinearThresholdModel
-        model_params = {
-            'threshold_range': params.get('thresholdRange', [0, 0.5])
-        }
-        model = OptimizedLinearThresholdModel(nodes, edges, **model_params)
-    elif model_name == "independent_cascade":
-        from propagation_models import IndependentCascadeModel
-        model_params = {
-            'propagation_probability': params.get('propagationProbability', 0.1)
-        }
-        model = IndependentCascadeModel(nodes, edges, **model_params)
-    else:
-        raise ValueError(f"Unsupported model: {model_name}")
-
     seed_set = []
     remaining_nodes = set(nodes)
     stages = []
     cumulative_activated = set()
     celf_queue = []
-    
 
     logging.info("Calculating initial marginal gains")
     
@@ -149,6 +141,7 @@ def celf(
         for node_id, gain in batch_result:
             celf_node = CELFNode(node_id, gain)
             heapq.heappush(celf_queue, celf_node)
+    
     
     #vom recalcula castigurile doar atunci cand adaugam un nod nou in seed set
     for iteration in range(k):
@@ -172,7 +165,6 @@ def celf(
                 break
                 
             #daca heap head s-a schimbat vom recalcula spread-ul curent
-
             #vom recalcula si spread-ul ce contine si nodul curent
             candidate_seeds = seed_set + [current_node.node_id]
             
@@ -187,7 +179,7 @@ def celf(
             # re-actualizam castigul nodului curent
             current_node.marginal_gain = candidate_spread - current_spread
             current_node.last_checked = iteration
-            
+                        
             # il adaugam inapoi in heap
             heapq.heappush(celf_queue, current_node)
             
@@ -197,10 +189,10 @@ def celf(
         # adaugam in seed set nodul cu castigul cel mai mare daca a fost gasit
         seed_set.append(best_node.node_id)
         remaining_nodes.remove(best_node.node_id)
-        
+                
         # rulam propagarea pentru a vedea cate noduri au fost activate la aceasta etapa
         activated = set(seed_set)
-        for _ in range(max_steps):
+        for step_idx in range(max_steps):
             newly_activated = set(model.propagate(list(activated))) - activated
             if not newly_activated:
                 break
@@ -225,41 +217,54 @@ def celf(
             f"Evaluations: {evaluations}"
         )
     
-    logging.info(f"CELF completed in {time.time() - start_time:.2f} seconds")
+    runtime = time.time() - start_time
+    logging.info(f"CELF completed in {runtime:.2f} seconds")
     
     return stages
 
 if __name__ == "__main__":
-    log_file = setup_logging()
-    
     try:
+        log_file = setup_logging()
+        
         if len(sys.argv) != 5:
-            raise ValueError("Usage: python celf.py <nodes_file_path> <edges_file_path> <model> <params_file_path>")
+            raise ValueError("Usage: python celf.py <nodes_file_path> <edges_file_path> <model_file_path> <params_file_path>")
             
-        # Read nodes from file path
+        # citim datele despre noduri si muchii din fisierele tmp
         with open(sys.argv[1], 'r') as nodes_file:
             nodes = json.load(nodes_file)
         
-        # Read edges from file path
         with open(sys.argv[2], 'r') as edges_file:
             edges = json.load(edges_file)
         
-        # Get model name from command line
-        model = sys.argv[3]
+        # incarcam modelul deja initializat
+        with open(sys.argv[3], 'rb') as model_file:
+            model = dill.load(model_file)
         
-        # Read params from file path
+        model_id = getattr(model, '_model_id', None)
+        
         with open(sys.argv[4], 'r') as params_file:
             params = json.load(params_file)
         
+        if not isinstance(nodes, list) or not isinstance(edges, list):
+            raise ValueError("Nodes and edges must be lists")
+        
+        num_cpus = mp.cpu_count()
         stages = celf(nodes, edges, model, params)
+
+        output = {
+            "stages": stages,
+            "model_id": model_id
+        }
         
         result_file = os.path.join(os.path.dirname(log_file), 'celf_results.json')
         with open(result_file, 'w') as f:
-            json.dump(stages, f, indent=2)
+            json.dump(output, f, indent=2)
+
         
-        print(json.dumps(stages))
+        print(json.dumps(output))
     
     except Exception as e:
         logging.error(f"Error: {str(e)}", exc_info=True)
-        print(f"Error: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
         sys.exit(1)

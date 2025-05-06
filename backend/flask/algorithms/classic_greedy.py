@@ -6,8 +6,17 @@ import numpy as np
 import multiprocessing as mp
 from functools import partial
 from typing import List, Dict, Set, Tuple, Union
+import dill
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
+
+# importam modelele de difuzie
+try:
+    from propagation_models import OptimizedLinearThresholdModel, IndependentCascadeModel
+    print("[DEBUG] Successfully pre-imported propagation_models", file=sys.stderr)
+except ImportError as e:
+    print(f"[DEBUG] Failed to pre-import propagation_models: {e}", file=sys.stderr)
+
 
 def setup_logging():
     log_dir = os.path.join(os.path.dirname(__file__), 'logs')
@@ -76,35 +85,19 @@ def parallel_simulations(args):
 def greedy_influence_maximization(
     nodes: List[Union[str, int]],
     edges: List[Tuple[Union[str, int], Union[str, int]]],
-    model_name: str,
+    model,  # Now accepting a pre-initialized model object
     params: Dict[str, Union[int, float]]
 ) -> List[Dict[str, Union[int, List[Union[str, int]], str]]]:
 
+    
     logging.info("Starting greedy influence maximization algorithm with parallelization")
     k = max(1, min(params.get('seedSize', 10), len(nodes)))
     max_steps = max(1, min(params.get('maxSteps', 5), 20))
     num_simulations = params.get('numSimulations', 50)
     num_processes = params.get('numProcesses', mp.cpu_count())
-    
+
     # multimea de noduri activata per total
     cumulative_activated = set()
-
-    # initializam modelul ales
-    if model_name == "linear_threshold":
-        from propagation_models import OptimizedLinearThresholdModel
-        model_params = {
-            'threshold_range': params.get('thresholdRange', [0, 0.5])
-        }
-        model = OptimizedLinearThresholdModel(nodes, edges, **model_params)
-    elif model_name == "independent_cascade":
-        from propagation_models import IndependentCascadeModel
-        model_params = {
-            'propagation_probability': params.get('propagationProbability', 0.1)
-        }
-        model = IndependentCascadeModel(nodes, edges, **model_params)
-    else:
-        raise ValueError(f"Unsupported model: {model_name}")
-    
     seed_set = []
     remaining_nodes = set(nodes)
     stages = []
@@ -135,7 +128,7 @@ def greedy_influence_maximization(
             
             # rulam propagarea pentru a activa nodurile
             activated = set(seed_set)
-            for _ in range(max_steps):
+            for step_idx in range(max_steps):
                 newly_activated = set(model.propagate(list(activated))) - activated
                 activated.update(newly_activated)
             
@@ -155,42 +148,51 @@ def greedy_influence_maximization(
     
     return stages
 
-
-
-def main():
+if __name__ == "__main__":
     try:
+
         log_file = setup_logging()
-        print(f"Logging to: {log_file}")
-        
+            
         if len(sys.argv) != 5:
             raise ValueError(
-                "Usage: python influence_propagation.py "
-                "<nodes_file_path> <edges_file_path> <model> <params_file_path>"
+                "Usage: python greedy_algorithm.py "
+                "<nodes_file_path> <edges_file_path> <model_file_path> <params_file_path>"
             )
         
-        # Read from file paths instead of direct JSON strings
+        # citim datele despre noduri si muchii din fisierele tmp
         with open(sys.argv[1], 'r') as nodes_file:
             nodes = json.load(nodes_file)
-        
+     
         with open(sys.argv[2], 'r') as edges_file:
             edges = json.load(edges_file)
         
-        model = sys.argv[3]
+        # incarcam modelul deja initializat
+        with open(sys.argv[3], 'rb') as model_file:
+            model = dill.load(model_file)
+        
+        model_id = getattr(model, '_model_id', None)
         
         with open(sys.argv[4], 'r') as params_file:
             params = json.load(params_file)
         
+        if not isinstance(nodes, list) or not isinstance(edges, list):
+            raise ValueError("Nodes and edges must be lists")
+            
         num_cpus = mp.cpu_count()
         logging.info(f"Running on machine with {num_cpus} CPUs")
         
         stages = greedy_influence_maximization(nodes, edges, model, params)
         
-        print(json.dumps(stages))
+        # Include model ID in the output for verification
+        output = {
+            "stages": stages,
+            "model_id": model_id
+        }
+        
+        print(json.dumps(output))
         
     except Exception as e:
         logging.error(f"Error in main execution: {str(e)}")
-        print(f"Error: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
         sys.exit(1)
-
-if __name__ == "__main__":
-    main()
