@@ -45,6 +45,55 @@ def convert_network_structure(input_dir, output_dir):
     print("All networks processed!")
 
 
-input_directory = "../../datasets/facebook"  
-output_directory = "../../datasets/csv_files/facebook"  
-convert_network_structure(input_directory, output_directory)
+def convert_to_csv(input_file, output_edges_file, output_nodes_file):
+    edges = []
+    nodes = set()  # Folosim un set pentru a evita duplicatele
+
+    # Citim fișierul de intrare și adăugăm perechile de noduri într-o listă
+    with open(input_file, 'r') as f:
+        for line in f:
+            # Ignorăm liniile care încep cu '%'
+            if line.startswith('%') or not line.strip():  # Adăugăm și verificarea pentru linii goale
+                continue
+            
+            try:
+                source, target = map(int, line.strip().split())
+                edges.append((source, target))
+                nodes.add(source)  # Adăugăm nodul source
+                nodes.add(target)  # Adăugăm nodul target
+            except ValueError:
+                # În cazul în care linia nu poate fi convertită în 2 numere, o ignorăm
+                continue
+    
+    # Creăm DataFrame pentru muchii
+    edges_df = pd.DataFrame(edges, columns=['source', 'target'])
+    
+    # Creăm DataFrame pentru noduri
+    nodes_df = pd.DataFrame(sorted(nodes), columns=['node_id'])
+    
+    # Salvăm DataFrame-urile în fișiere CSV
+    edges_df.to_csv(output_edges_file, index=False)
+    nodes_df.to_csv(output_nodes_file, index=False)
+
+
+
+# input_directory = "../../datasets/facebook"  
+# output_directory = "../../datasets/csv_files/facebook"  
+# convert_network_structure(input_directory, output_directory)
+
+# input_directory = "../../datasets/filmtrust/filmtrust.librec"
+# output_directory = "../../datasets/csv_files/filmtrust/"
+
+# input_directory = "../../datasets/pol_blogs/pol_blogs"
+# output_directory = "../../datasets/csv_files/pol_blogs/"
+
+
+input_directory = "../../datasets/email/email.txt"
+output_directory = "../../datasets/csv_files/email/"
+
+os.makedirs(output_directory, exist_ok=True)
+nodes_file = os.path.join(output_directory, "nodes.csv")
+edges_file = os.path.join(output_directory, "edges.csv")
+
+convert_to_csv(input_directory, edges_file, nodes_file)
+
