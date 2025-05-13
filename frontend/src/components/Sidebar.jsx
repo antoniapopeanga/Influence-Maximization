@@ -3,9 +3,9 @@ import '../css/Sidebar.css';
 
 const Sidebar = ({ onSubmit }) => {
   const [datasets] = useState([
-    'facebook 0', 'facebook 1', 'facebook 107', 'facebook 348', 
-    'facebook 414', 'facebook 686', 'facebook 696', 'facebook 1684', 
-    'facebook 1912', 'facebook 3437', 'facebook 3980', 'filmtrust 875', 'pol_blogs 1225', 'email 1006'
+    'facebook 0', 'facebook 107', 'facebook 348'
+    , 'facebook 686','facebook 1684', 
+    'facebook 1912', 'facebook 3437', 'filmtrust 875', 'pol_blogs 1225', 'email 1006'
   ]);
   
   const [diffusionModels] = useState([

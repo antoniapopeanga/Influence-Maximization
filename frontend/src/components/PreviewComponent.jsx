@@ -37,12 +37,12 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
   useEffect(() => {
     if (graphRef.current) {
       graphRef.current.zoomToFit(500);
-      graphRef.current.d3Force("charge").strength(-800);
+      graphRef.current.d3Force("charge").strength(-300);
       graphRef.current.d3Force("link").distance(250);
 
       setTimeout(() => {
         graphRef.current.zoomToFit(400, 100, node => true);
-        graphRef.current.cameraPosition({ z: 700 }); // zoom out
+        graphRef.current.cameraPosition({ z: 200}); // zoom out
       }, 100);
     }
   }, [graphData]);
@@ -230,11 +230,11 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
           <ForceGraph3D
             ref={graphRef}
             graphData={processedGraphData}
-            nodeRelSize={30}
-            linkWidth={7}
-            linkDirectionalParticles={6}
-            linkDirectionalArrowLength={6}
-            nodeLabel={(node) => `Node ${node.id}`}
+            nodeRelSize={18}
+            linkWidth={4}
+            linkDirectionalParticles={0}
+            linkDirectionalArrowLength={0}
+             nodeLabel={() => ''}
             backgroundColor="#1e1e1e"
           />
         </div>

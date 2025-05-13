@@ -1,0 +1,36 @@
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: white; /* un albastru elegant */
+  padding: 12px 24px;
+  color: black;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.navbar-title:hover {
+  color: #93c5fd; /* albastru deschis la hover */
+}
+
+.navbar-button {
+  background-color: rgba(255, 255, 255, 0.393);
+  color: black;
+  font-weight: 600;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.navbar-button:hover {
+  background-color: #f3f4f698; /* gri foarte deschis */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}

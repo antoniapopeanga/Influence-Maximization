@@ -12,6 +12,10 @@ import sys
 import uuid
 import hashlib
 
+#initializam db
+from database import init_db, insert_network_stats, get_all_network_stats
+init_db()
+
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000"])
 
@@ -285,6 +289,58 @@ def run_algorithm():
             "status": "error",
             "error": f"Unexpected server error: {str(e)}"
         }), 500
+    
+#endpoint pentru salvarea datelor despre retelele de grafuri
+@app.route("/save-network-stats", methods=["POST"])
+def save_network_stats():
+    try:
+        data = request.json
+        dataset_name, number = data["name"].split()
+
+        nodes_path = os.path.join(DATASET_FOLDER, dataset_name, f"{number}_nodes.csv")
+        edges_path = os.path.join(DATASET_FOLDER, dataset_name, f"{number}_edges.csv")
+        
+        # Verifică dacă fișierele există
+        if not os.path.exists(nodes_path) or not os.path.exists(edges_path):
+            return jsonify({"error": f"File(s) not found: {nodes_path}, {edges_path}"}), 400
+
+        df_edges = pd.read_csv(edges_path)
+        G = nx.Graph()
+        G.add_edges_from(zip(df_edges['source'], df_edges['target']))
+
+        num_nodes = G.number_of_nodes()
+        num_edges = G.number_of_edges()
+        avg_degree = sum(dict(G.degree()).values()) / num_nodes
+        clustering = nx.average_clustering(G)
+        deg_dist = json.dumps(nx.degree_histogram(G)) # distribuția gradelor
+
+        insert_network_stats(dataset_name + " " + number, num_nodes, num_edges, avg_degree, clustering, deg_dist)
+        
+        return jsonify({"status": "success", "message": "Network stats saved successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+#endpoint pentru afisarea datelor despre retelele de grafuri
+@app.route("/datasets-info", methods=["GET"])
+def get_datasets_info():
+    try:
+        rows = get_all_network_stats()
+        datasets = [
+            {
+                "id": row[0],
+                "name": row[1],
+                "num_nodes": row[2],
+                "num_edges": row[3],
+                "average_degree": row[4],
+                "clustering_coeff": row[5],
+                "degree_distribution": json.loads(row[6])
+            } for row in rows
+        ]
+        return jsonify({"status": "success", "datasets": datasets}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
