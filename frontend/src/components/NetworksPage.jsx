@@ -31,7 +31,7 @@ const NetworksPage = () => {
       <div className="networks-loading-container">
         <div className="networks-loading-box">
           <div className="loading-spinner"></div>
-          <p className="loading-text">Se încarcă datele rețelelor...</p>
+          <p className="loading-text">Networks data loading...</p>
         </div>
       </div>
     );
@@ -44,7 +44,7 @@ const NetworksPage = () => {
           <div className="error-icon">⚠️</div>
           <p className="error-message">{error}</p>
           <button className="retry-button" onClick={() => window.location.reload()}>
-            Încearcă din nou
+            Try again please
           </button>
         </div>
       </div>
@@ -55,9 +55,9 @@ const NetworksPage = () => {
     <div className="networks-page">
       <div className="networks-content">
         <div className="networks-header">
-          <h1 className="networks-title">Statistici rețele de grafuri</h1>
+          <h1 className="networks-title">Graph networks structure</h1>
           <p className="networks-subtitle">
-            Vizualizează și analizează datele despre rețelele de grafuri
+            Visualize and analyze the data for all the graph networks used to test the Influence Maximization algorithms
           </p>
         </div>
 

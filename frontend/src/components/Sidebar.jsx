@@ -2,11 +2,21 @@ import React, { useState } from 'react';
 import '../css/Sidebar.css';
 
 const Sidebar = ({ onSubmit }) => {
-  const [datasets] = useState([
-    'facebook 0', 'facebook 107', 'facebook 348'
-    , 'facebook 686','facebook 1684', 
-    'facebook 1912', 'facebook 3437', 'filmtrust 875', 'pol_blogs 1225', 'email 1006'
-  ]);
+const [datasets] = useState([
+  { value: 'facebook 0', label: 'Facebook ego node 0' },
+  { value: 'facebook 107', label: 'Facebook ego node 107' },
+  { value: 'facebook 348', label: 'Facebook ego node 348' },
+  { value: 'facebook 686', label: 'Facebook ego node 686' },
+  { value: 'facebook 1684', label: 'Facebook ego node 1684' },
+  { value: 'facebook 1912', label: 'Facebook ego node 1912' },
+  { value: 'facebook 3437', label: 'Facebook ego node 3437' },
+  { value: 'filmtrust 875', label: 'FilmTrust Project' },
+  { value: 'pol_blogs 1225', label: 'Political Blogs' },
+  { value: 'email 1006', label: 'Research Institution Email' },
+  { value: 'physicians 242', label: 'Physician Trust Network' },
+  { value: 'email_TarragonaUni 1134', label: 'Tarragona University Email' }
+]);
+
   
   const [diffusionModels] = useState([
     { value: 'linear_threshold', label: 'Linear Threshold (LT)' },
@@ -133,8 +143,8 @@ const Sidebar = ({ onSubmit }) => {
             >
               <option value="" disabled>Select Dataset</option>
               {datasets.map((dataset, index) => (
-                <option key={index} value={dataset}>
-                  {dataset}
+                <option key={index} value={dataset.value}>
+                  {dataset.label}
                 </option>
               ))}
             </select>

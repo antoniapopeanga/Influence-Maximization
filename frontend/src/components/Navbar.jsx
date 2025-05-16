@@ -10,9 +10,14 @@ const Navbar = () => {
       <div className="navbar-title" onClick={() => navigate('/')}>
         GraphNet
       </div>
-      <button className="navbar-button" onClick={() => navigate('/networks')}>
-        Vezi rețelele
-      </button>
+      <div className="navbar-buttons">
+        <button className="navbar-button" onClick={() => navigate('/networks')}>
+          See the Networks
+        </button>
+        <button className="navbar-statistics" onClick={() => navigate('/statistics')}>
+          Performance Statistics
+        </button>
+      </div>
     </nav>
   );
 };

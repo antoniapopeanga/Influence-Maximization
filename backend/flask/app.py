@@ -11,9 +11,11 @@ import dill
 import sys
 import uuid
 import hashlib
+import sqlite3
 
 #initializam db
-from database import init_db, insert_network_stats, get_all_network_stats
+from database import init_db, insert_network_stats, get_all_network_stats,insert_algorithm_run,get_all_algorithm_runs
+
 init_db()
 
 app = Flask(__name__)
@@ -63,7 +65,7 @@ def initialize_model(G, model_name, params):
     model._model_id = model_id    
     return model
 
-def run_single_algorithm(algorithm, G, initialized_model, params):
+def run_single_algorithm(algorithm, G, initialized_model, params, dataset, key):
     try:
 
         start_time = time.time()
@@ -143,6 +145,22 @@ def run_single_algorithm(algorithm, G, initialized_model, params):
                 seed_nodes.update(stage['selected_nodes'])
             if 'total_activated' in stage:
                 total_activated = max(total_activated, stage['total_activated'])
+
+        # inseram datele despre simularea facuta in db
+        insert_algorithm_run(
+            model_id=initialized_model._model_id,
+            algorithm=algorithm,
+            cache_key=key,
+            seed_size=len(seed_nodes),
+            runtime=runtime,
+            spread=total_activated,
+            seed_nodes=list(seed_nodes),
+            stages=algorithm_stages,
+            network_name=dataset,
+            diffusion_model=initialized_model.__class__.__name__,
+            model_params=json.dumps(initialized_model.get_model_params())
+        )
+
         
         return {
             "status": "success",
@@ -251,7 +269,7 @@ def run_algorithm():
                 selected_algorithm, 
                 G, 
                 initialized_model,
-                current_params
+                current_params,selected_dataset,cache_key
             )
             
             if algorithm_result["status"] == "error":
@@ -339,7 +357,30 @@ def get_datasets_info():
         return jsonify({"status": "success", "datasets": datasets}), 200
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500
+    
+#endpoint pt a returna toate datele despre algoritmi impreune cu datele despre retele
+@app.route('/statistics', methods=['GET'])
+def get_statistics():
+    conn = sqlite3.connect('networks.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
 
+    query = '''
+        SELECT 
+            ar.id, ar.algorithm, ar.seed_size, ar.runtime, ar.spread, ar.timestamp,
+            ar.network_name, ar.diffusion_model,
+            ns.num_nodes, ns.num_edges, ns.average_degree, ns.clustering_coeff
+        FROM algorithm_runs ar
+        LEFT JOIN network_stats ns ON ar.network_name = ns.name
+        ORDER BY ar.timestamp DESC
+    '''
+
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    conn.close()
+
+    results = [dict(row) for row in rows]
+    return jsonify({'stats': results})
 
 
 if __name__ == "__main__":

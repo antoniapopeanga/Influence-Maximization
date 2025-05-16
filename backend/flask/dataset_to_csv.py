@@ -88,8 +88,14 @@ def convert_to_csv(input_file, output_edges_file, output_nodes_file):
 # output_directory = "../../datasets/csv_files/pol_blogs/"
 
 
-input_directory = "../../datasets/email/email.txt"
-output_directory = "../../datasets/csv_files/email/"
+# input_directory = "../../datasets/email/email.txt"
+# output_directory = "../../datasets/csv_files/email/"
+
+# input_directory = "../../datasets/physicians/physicians_inovation"
+# output_directory = "../../datasets/csv_files/physicians/"
+
+input_directory = "../../datasets/email_TarragonaUni/arenas-email"
+output_directory = "../../datasets/csv_files/email_Tarragona/"
 
 os.makedirs(output_directory, exist_ok=True)
 nodes_file = os.path.join(output_directory, "nodes.csv")

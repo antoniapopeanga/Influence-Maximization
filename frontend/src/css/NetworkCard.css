@@ -94,11 +94,63 @@
 }
 
 .chart-container {
-  height: 16rem;
+  height: 10rem;
 }
 
 .network-metrics {
-  margin-top: 1.5rem;
-  font-size: 0.875rem;
-  color: #4b5563;
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+
+}
+
+.network-metrics p {
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  font-size: 1rem;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.network-metrics p:last-child {
+  border-bottom: none;
+}
+
+.network-metrics p strong {
+  color: #4f46e5;
+  font-weight: 500;
+  margin-right: 0.3rem;
+}
+.network-card-image {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin-top: 10px;
+  object-fit: cover;
+  max-height: 200px;
+}
+
+.network-description {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+  color: #444;
+}
+
+
+.details-button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background-color: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.details-button:hover {
+  background-color: #4338ca;
 }

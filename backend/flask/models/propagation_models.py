@@ -82,6 +82,11 @@ class OptimizedLinearThresholdModel:
         
         all_active_indices = active_indices.union(new_active_indices)
         return [self.get_node_from_index(idx) for idx in all_active_indices]
+    
+    def get_model_params(self):
+        return {
+            "thresholds": self.thresholds.tolist()  # convertim din numpy array în listă standard pt JSON
+        }
 
 
 class IndependentCascadeModel(PropagationModel):
@@ -108,3 +113,8 @@ class IndependentCascadeModel(PropagationModel):
             frontier = next_frontier
 
         return list(new_active)
+    
+    def get_model_params(self):
+        return {
+            "probabilities": {f"{u}-{v}": p for (u, v), p in self.probabilities.items()}
+        }
