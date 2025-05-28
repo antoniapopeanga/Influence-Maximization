@@ -120,108 +120,261 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
     }
   };
 
-  const startAnimation = async (algorithm) => {
-    clearAnimationData();
-    await new Promise(resolve => setTimeout(resolve, 500));
-  
-    const algorithmResults = graphData?.algorithm_results?.[algorithm];
-    if (!algorithmResults) {
-      console.warn(`No results found for algorithm ${algorithm}`);
+// Replace your existing zoomToNodes function with this improved version
+const zoomToNodes = (nodeIds, zoomDistance = 150) => {
+  if (!graphRef.current || !graphDataRef.current || nodeIds.length === 0) return;
+
+  setTimeout(() => {
+    const nodes = graphDataRef.current.nodes.filter(n =>
+      nodeIds.includes(n.id) && 
+      typeof n.x === 'number' && 
+      typeof n.y === 'number'
+    );
+
+    if (nodes.length === 0) {
+      console.warn('No positioned nodes found for zoom');
       return;
     }
-  
-    setActiveAlgorithm(algorithm);
-    setIsAnimating(true);
-  
-    const seedSizes = Object.keys(algorithmResults.stages_by_seed)
-      .map(Number)
-      .sort((a, b) => a - b);
-  
-    for (const seedSize of seedSizes) {
-      clearAnimationData();
-      setCurrentSeedSize(seedSize);
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-  
-      const stages = algorithmResults.stages_by_seed[seedSize];
-      
-      if (!stages || stages.length === 0) {
-        console.warn(`No stages found for seed size ${seedSize}`);
-        continue;
-      }
-  
-      const seedNodesSet = new Set();
-      stages.forEach(stage => {
-        if (stage.selected_nodes) {
-          stage.selected_nodes.forEach(node => seedNodesSet.add(node));
-        }
-      });
-  
-      for (let stageIndex = 0; stageIndex < stages.length; stageIndex++) {
-        const newStage = stages[stageIndex];
-        setCurrentStage({...newStage, algorithm});
 
-        const seedNodes = new Set();
-        if (Array.isArray(newStage.selected_nodes)) {
-          newStage.selected_nodes.forEach(node => {
-            seedNodes.add(node);
-            const nodeObj = graphDataRef.current.nodes.find(n => n.id === node);
-            if (nodeObj) {
-              nodeObj.__algorithm = algorithm;
-              nodeObj.color = getAlgorithmColor(algorithm);
-            }
-          });
-        }
+    const center = {
+      x: nodes.reduce((sum, n) => sum + n.x, 0) / nodes.length,
+      y: nodes.reduce((sum, n) => sum + n.y, 0) / nodes.length,
+      z: nodes.reduce((sum, n) => sum + n.z, 0) / nodes.length
+    };
+
+    // Calculate bounding box for better zoom distance
+    const bounds = {
+      minX: Math.min(...nodes.map(n => n.x)),
+      maxX: Math.max(...nodes.map(n => n.x)),
+      minY: Math.min(...nodes.map(n => n.y)),
+      maxY: Math.max(...nodes.map(n => n.y)),
+      minZ: Math.min(...nodes.map(n => n.z)),
+      maxZ: Math.max(...nodes.map(n => n.z))
+    };
+
+    // Adaptive zoom distance based on spread of nodes
+    const spread = Math.max(
+      bounds.maxX - bounds.minX,
+      bounds.maxY - bounds.minY,
+      bounds.maxZ - bounds.minZ
+    );
+    
+    const adaptiveZoomDistance = Math.max(zoomDistance, spread * 1.5);
+
+    console.log('Zooming to center:', center, 'with distance:', adaptiveZoomDistance);
+
+    graphRef.current.cameraPosition(
+      { x: center.x, y: center.y, z: center.z + adaptiveZoomDistance },
+      center,
+      1500 // Slower transition for smoother movement
+    );
+  }, 300); // Reduced delay
+};
+
+
+const sparkleNodes = async (nodeIds, color, duration = 1500, interval = 200) => {
+  const nodes = graphDataRef.current.nodes.filter(n => nodeIds.includes(n.id));
+
+  const sparkleSteps = Math.floor(duration / interval);
+  for (let i = 0; i < sparkleSteps; i++) {
+    nodes.forEach(node => {
+      node.color = i % 2 === 0 
+        ? color.replace('rgb', 'rgba').replace(')', ', 1)')
+        : color.replace('rgb', 'rgba').replace(')', ', 0.3)');
+    });
+    graphRef.current.refresh();
+    await new Promise(resolve => setTimeout(resolve, interval));
+  }
+
+  // Restore to full color after sparkle
+  nodes.forEach(node => {
+    node.color = color;
+  });
+  graphRef.current.refresh();
+};
+
+
+// Add this new function to zoom to all activated nodes
+const zoomToActivatedNodes = (activatedNodeIds) => {
+  if (activatedNodeIds.length === 0) return;
+  
+  // Use a larger zoom distance for activated nodes view
+  zoomToNodes(activatedNodeIds, 200);
+};
+
+// Update your startAnimation function - replace the relevant section:
+const startAnimation = async (algorithm) => {
+  clearAnimationData();
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  const algorithmResults = graphData?.algorithm_results?.[algorithm];
+  if (!algorithmResults) {
+    console.warn(`No results found for algorithm ${algorithm}`);
+    return;
+  }
+
+  setActiveAlgorithm(algorithm);
+  setIsAnimating(true);
+
+  const seedSizes = Object.keys(algorithmResults.stages_by_seed)
+    .map(Number)
+    .sort((a, b) => a - b);
+
+  for (const seedSize of seedSizes) {
+    clearAnimationData();
+    setCurrentSeedSize(seedSize);
+    
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const stages = algorithmResults.stages_by_seed[seedSize];
+    
+    if (!stages || stages.length === 0) {
+      console.warn(`No stages found for seed size ${seedSize}`);
+      continue;
+    }
+
+    const seedNodesSet = new Set();
+    stages.forEach(stage => {
+      if (stage.selected_nodes) {
+        stage.selected_nodes.forEach(node => seedNodesSet.add(node));
+      }
+    });
+
+    // Track all activated nodes throughout the process
+    const allActivatedNodes = new Set();
+
+    for (let stageIndex = 0; stageIndex < stages.length; stageIndex++) {
+      const newStage = stages[stageIndex];
+      setCurrentStage({...newStage, algorithm});
+
+      // === SEED NODES PHASE ===
+      const seedNodes = new Set();
+      if (Array.isArray(newStage.selected_nodes)) {
+        newStage.selected_nodes.forEach(node => {
+          seedNodes.add(node);
+          allActivatedNodes.add(node);
+        });
+      }
+      
+      // 1. First zoom to seed nodes WITHOUT coloring
+      if (seedNodes.size > 0) {
+        zoomToNodes([...seedNodes], 120);
         
+        // Wait for zoom to complete
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // 2. Then color and sparkle the seed nodes
+        const color = getAlgorithmColor(algorithm);
+        seedNodes.forEach(node => {
+          const nodeObj = graphDataRef.current.nodes.find(n => n.id === node);
+          if (nodeObj) {
+            nodeObj.__algorithm = algorithm;
+          }
+        });
         setSeedNodes(seedNodes);
         setHighlightedNodes(seedNodes);
         setActivatedNodes(prev => new Set([...prev, ...seedNodes]));
 
+        // Sparkle effect before final color
+        await sparkleNodes([...seedNodes], color);
+
+        // Wait to show the colored seed nodes
         await new Promise(resolve => setTimeout(resolve, 1500));
-            
-  
-        const propagatedNodes = new Set();
-        if (Array.isArray(newStage.propagated_nodes)) {
-          newStage.propagated_nodes.forEach(node => {
-            if (!seedNodesSet.has(node)) {
-              propagatedNodes.add(node);
-            }
-          });
-        }
-  
+      }
+
+      // === PROPAGATION PHASE ===
+      const propagatedNodes = new Set();
+      if (Array.isArray(newStage.propagated_nodes)) {
+        newStage.propagated_nodes.forEach(node => {
+          if (!seedNodesSet.has(node)) {
+            propagatedNodes.add(node);
+            allActivatedNodes.add(node);
+          }
+        });
+      }
+
+      if (propagatedNodes.size > 0) {
+        // 3. Zoom out to show all activated nodes (seed + propagated)
+        zoomToActivatedNodes([...allActivatedNodes]);
+        
+        // Wait for zoom to complete
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        
+        // 4. Then color the propagated nodes
         setHighlightedNodes(propagatedNodes);
         setActivatedNodes(prev => new Set([...prev, ...propagatedNodes]));
-  
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // The propagated nodes will be colored by the useEffect that watches state changes
+        
+        // Wait to show the propagation effect
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
-  
-      await new Promise(resolve => setTimeout(resolve, 2000));
     }
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  }
+
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  setIsAnimating(false);
+  setCurrentSeedSize(null);
   
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsAnimating(false);
-    setCurrentSeedSize(null);
-    
-    if (algorithmResults.metrics) {
-      setComparisonResults(prev => [
-        ...prev.filter(r => r.algorithm !== algorithm),
-        { 
-          algorithm, 
-          ...algorithmResults.metrics,
-          seed_nodes: Array.from(
-            new Set(
-              seedSizes.flatMap(size => 
-                algorithmResults.stages_by_seed[size]
-                  .flatMap(stage => stage.selected_nodes || [])
-              )
+  if (algorithmResults.metrics) {
+    setComparisonResults(prev => [
+      ...prev.filter(r => r.algorithm !== algorithm),
+      { 
+        algorithm, 
+        ...algorithmResults.metrics,
+        seed_nodes: Array.from(
+          new Set(
+            seedSizes.flatMap(size => 
+              algorithmResults.stages_by_seed[size]
+                .flatMap(stage => stage.selected_nodes || [])
             )
           )
-        }
-      ]);
-    }
-  };
-  
-  
+        )
+      }
+    ]);
+  }
+};
+const rotateCamera = (direction = 'left') => {
+  const distance = 400; // how far the camera stays from center
+  const angleDelta = Math.PI / 12; // 15 degrees
+  const angle = direction === 'left' ? angleDelta : -angleDelta;
+
+  const curPos = graphRef.current.cameraPosition();
+  const newX = curPos.x * Math.cos(angle) - curPos.z * Math.sin(angle);
+  const newZ = curPos.x * Math.sin(angle) + curPos.z * Math.cos(angle);
+
+  graphRef.current.cameraPosition({ x: newX, y: curPos.y, z: newZ }, undefined, 300);
+};
+
+const handleRotateLeft = () => rotateCamera('left');
+const handleRotateRight = () => rotateCamera('right');
+
+
+
+const zoomIn = () => {
+  if (!graphRef.current) return;
+  const camera = graphRef.current.camera();
+  const factor = 0.8;
+  graphRef.current.cameraPosition({
+    x: camera.position.x * factor,
+    y: camera.position.y * factor,
+    z: camera.position.z * factor
+  });
+};
+
+const zoomOut = () => {
+  if (!graphRef.current) return;
+  const camera = graphRef.current.camera();
+  const factor = 1.2;
+  graphRef.current.cameraPosition({
+    x: camera.position.x * factor,
+    y: camera.position.y * factor,
+    z: camera.position.z * factor
+  });
+};
+
 
   return (
     <div className="preview-wrapper">
@@ -230,8 +383,8 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
           <ForceGraph3D
             ref={graphRef}
             graphData={processedGraphData}
-            nodeRelSize={18}
-            linkWidth={4}
+            nodeRelSize={20}
+            linkWidth={1}
             linkDirectionalParticles={0}
             linkDirectionalArrowLength={0}
              nodeLabel={() => ''}
@@ -298,8 +451,21 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
             </button>
           ))}
         </div>
-        
       </div>
+
+      {graphData && graphData.nodes.length > 0 && (
+        <div className="graph-controls-container">
+          <div className="graph-controls">
+              <button onClick={zoomIn}>➕ Zoom In</button>
+              <button onClick={zoomOut}>➖ Zoom Out</button>
+              <button onClick={handleRotateLeft}>⟲ Rotate Left</button>
+              <button onClick={handleRotateRight}>⟳ Rotate Right</button>
+
+          </div>
+        </div>
+      )}
+
+      
     </div>
     </div>
   );

@@ -209,7 +209,11 @@ def run_algorithm():
         selected_model = data['model']
         selected_algorithm = data['algorithm']
         parameters = data.get('parameters', {})
-        propagation_prob=data['propagationProbability']
+        if 'propagationProbability' in data:
+         propagation_prob=data['propagationProbability']
+
+        else:
+            propagation_prob=0.1
 
         # generarea cheii pentru a salva in cache modelul
         cache_key = get_cache_key(selected_dataset, selected_model, parameters)

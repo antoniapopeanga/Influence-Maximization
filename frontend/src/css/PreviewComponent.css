@@ -116,3 +116,26 @@ canvas {
 .seed-size-info.hide {
   opacity: 0;
 }
+.graph-controls {
+  margin-top: 20px;
+  position: absolute;
+  top: 10px;
+  right: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 10; /* Make sure it stays above the canvas */
+}
+
+.graph-controls button {
+  background-color: #222;
+  color: white;
+  border: 1px solid #555;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.graph-controls button:hover {
+  background-color: #444;
+}
