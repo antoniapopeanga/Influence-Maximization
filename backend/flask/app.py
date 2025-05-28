@@ -39,7 +39,7 @@ def get_cache_key(dataset, model_name, params):
     
     return hashlib.md5(key_string.encode()).hexdigest()
 
-def initialize_model(G, model_name, params):
+def initialize_model(G, model_name, params, propagation_prob=0.1):
     
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'models')))
     
@@ -54,9 +54,11 @@ def initialize_model(G, model_name, params):
         model = OptimizedLinearThresholdModel(nodes, edges, **model_params)
     elif model_name == "independent_cascade":
         from propagation_models import IndependentCascadeModel
+        print(f"Propagation probability: {propagation_prob}")
         model_params = {
-            'propagation_probability': params.get('propagationProbability', 0.1)
+            'propagation_probability': propagation_prob
         }
+
         model = IndependentCascadeModel(nodes, edges, **model_params)
     else:
         raise ValueError(f"Unsupported model: {model_name}")
@@ -207,7 +209,8 @@ def run_algorithm():
         selected_model = data['model']
         selected_algorithm = data['algorithm']
         parameters = data.get('parameters', {})
-        
+        propagation_prob=data['propagationProbability']
+
         # generarea cheii pentru a salva in cache modelul
         cache_key = get_cache_key(selected_dataset, selected_model, parameters)
         
@@ -248,7 +251,7 @@ def run_algorithm():
         else:
             # initializam modelul O SINGURA DATA pentru toate scripturile
             try:
-                initialized_model = initialize_model(G, selected_model, parameters)
+                initialized_model = initialize_model(G, selected_model, parameters, propagation_prob)
                 MODEL_CACHE[cache_key] = initialized_model
                 model_id = getattr(initialized_model, '_model_id', 'Unknown')
             except Exception as e:
@@ -368,7 +371,7 @@ def get_statistics():
     query = '''
         SELECT 
             ar.id, ar.algorithm, ar.seed_size, ar.runtime, ar.spread, ar.timestamp,
-            ar.network_name, ar.diffusion_model,
+            ar.network_name, ar.diffusion_model,ar.model_params,
             ns.num_nodes, ns.num_edges, ns.average_degree, ns.clustering_coeff
         FROM algorithm_runs ar
         LEFT JOIN network_stats ns ON ar.network_name = ns.name

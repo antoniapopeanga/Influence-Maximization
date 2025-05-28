@@ -31,6 +31,7 @@ const Main = () => {
           dataset: selectedDataset,
           model: selectedModel,
           algorithm: algorithm,
+          propagationProbability: parameters.propagationProbability,
           parameters: parameters[algorithm] || {}
         });
   

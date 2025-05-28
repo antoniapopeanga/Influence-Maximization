@@ -91,7 +91,12 @@ def greedy_influence_maximization(
     num_processes = min(params.get('numProcesses', avail_cpus), avail_cpus)
     run_id = params.get('runId', 'default')  # un id pentru a identifica simularile
     validation_candidates = params.get('validationCandidates', 10)  # numar de candidati alternativi
-
+    coverage_threshold = 0.95
+    min_marginal_gain_fraction = 0.02
+    recent_gains = []
+    grace_period = 3  # număr minim de etape înainte de a permite oprirea
+    trend_window = 3  # ultimele N câștiguri marginale de analizat
+    stagnation_threshold = len(nodes) * min_marginal_gain_fraction
     logging.info(f"Beginning seed selection for {len(nodes)} nodes, target {k} seeds")
     logging.info(f"Using {num_processes} processes for node evaluation")
     
@@ -188,50 +193,76 @@ def greedy_influence_maximization(
 
     # pentru stage-urile ramase paralelizam evaluarile nodurilor in batch-uri
     with mp.Pool(processes=num_processes) as pool:
-        for stage in range(start_stage, k):
-            logging.info(f"Starting stage {stage+1}/{k}")
-            node_batches = create_node_batches(remaining_nodes, num_processes * 2)
+            for stage in range(start_stage, k):
+                logging.info(f"Starting stage {stage+1}/{k}")
+                node_batches = create_node_batches(remaining_nodes, num_processes * 2)
 
-            args_list = [
-                (model, nodes, seed_set, batch, num_simulations)
-                for batch in node_batches
-            ]
+                args_list = [
+                    (model, nodes, seed_set, batch, num_simulations)
+                    for batch in node_batches
+                ]
 
-            batch_results = pool.map(batch_evaluate_nodes, args_list)
-
-            all_results = [item for batch in batch_results for item in batch]
-            if not all_results:
-                break
-
-            # selectam nodul cu influenta max
-            max_node, max_influence = max(all_results, key=lambda x: x[1])
-
-            seed_set.append(max_node)
-            remaining_nodes.remove(max_node)
-
-            # activam nodurile infectate de max_node
-            activated = set(seed_set)
-            for _ in range(max_steps):
-                newly_activated = set(model.propagate(list(activated))) - activated
-                if not newly_activated:
+                batch_results = pool.map(batch_evaluate_nodes, args_list)
+                all_results = [item for batch in batch_results for item in batch]
+                if not all_results:
                     break
-                activated.update(newly_activated)
 
-            # adaugam nodurile noi activate in multimea totala de noduri active
-            cumulative_activated.update(activated)
+                max_node, max_influence = max(all_results, key=lambda x: x[1])
+                seed_set.append(max_node)
+                remaining_nodes.remove(max_node)
 
-            # salvam datele pentru etapa curenta
-            stage_data = {
+                activated = set(seed_set)
+                for _ in range(max_steps):
+                    newly_activated = set(model.propagate(list(activated))) - activated
+                    if not newly_activated:
+                        break
+                    activated.update(newly_activated)
+
+                prev_total = len(cumulative_activated)
+                cumulative_activated.update(activated)
+                total_activated = len(cumulative_activated)
+                marginal_gain = total_activated - prev_total
+
+                stage_data = {
+                    "stage": stage + 1,
+                    "selected_nodes": seed_set.copy(),
+                    "propagated_nodes": list(cumulative_activated),
+                    "total_activated": total_activated,
+                    "marginal_gain": marginal_gain
+                }
+                stages.append(stage_data)
+
+                logging.info(f"Completed stage {stage+1}: selected node {max_node}, total activated: {total_activated}")
+
+                # Verificăm condițiile de oprire
+                recent_gains.append(marginal_gain)
+                if len(recent_gains) > trend_window:
+                    recent_gains.pop(0)
+
+                # Condiție 1: acoperire satisfăcătoare
+                if total_activated / len(nodes) >= coverage_threshold:
+                    logging.info(f"Stopping early: reached {total_activated}/{len(nodes)} ({(total_activated / len(nodes))*100:.2f}%) coverage")
+                    break
+
+                # Condiție 2: stagnare în câștig marginal după perioada de "grace"
+                if stage + 1 >= grace_period and all(g < stagnation_threshold for g in recent_gains):
+                    logging.info(f"Stopping early: marginal gain stagnant over last {trend_window} stages")
+                    break
+
+    # Completăm restul etapelor cu ultima selecție validă
+    last_stage = stages[-1] if stages else None
+    for stage in range(len(stages), k):
+        if last_stage:
+            duplicated_stage = {
                 "stage": stage + 1,
-                "selected_nodes": seed_set.copy(),
-                "propagated_nodes": list(cumulative_activated),
-                "total_activated": len(cumulative_activated),
-                "marginal_gain": max_influence
+                "selected_nodes": last_stage["selected_nodes"].copy(),
+                "propagated_nodes": last_stage["propagated_nodes"].copy(),
+                "total_activated": last_stage["total_activated"],
+                "marginal_gain": 0  # Nicio îmbunătățire nouă
             }
-            stages.append(stage_data)
+            stages.append(duplicated_stage)
+            logging.info(f"Filled stage {stage+1} with previous results due to early stopping")
 
-            logging.info(f"Completed stage {stage+1}: selected node {max_node}, total activated: {len(cumulative_activated)}")
-    
     # salvam seed set-urile pentru o utilizare viitoare
     previous_seed_sets[run_id] = stages
     

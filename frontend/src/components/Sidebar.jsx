@@ -49,19 +49,43 @@ const [datasets] = useState([
     ]
   };
 
+const modelParams = {
+  independent_cascade: [
+    {
+      name: "propagationProbability",
+      label: "Propagation Probability",
+      type: "number",
+      min: 0.01,
+      max: 1,
+      step: 0.01,
+      default: 0.1
+    }
+  ]
+};
+
+
   const [selectedDataset, setSelectedDataset] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [selectedAlgorithms, setSelectedAlgorithms] = useState([]);
   const [parameters, setParameters] = useState({});
+  const [modelParameters, setModelParameters] = useState({});
   const [activeAlgorithm, setActiveAlgorithm] = useState(null);
 
   const handleDatasetChange = (event) => {
     setSelectedDataset(event.target.value);
   };
 
-  const handleModelChange = (event) => {
-    setSelectedModel(event.target.value);
-  };
+const handleModelChange = (event) => {
+  const value = event.target.value;
+  setSelectedModel(value);
+
+  const defaultParams = {};
+  modelParams[value]?.forEach(param => {
+    defaultParams[param.name] = param.default;
+  });
+
+  setModelParameters(defaultParams);
+};
 
   const handleAlgorithmChange = (event) => {
     const value = event.target.value;
@@ -114,20 +138,25 @@ const [datasets] = useState([
     handleParamChange(algorithm, paramName, newValues);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!selectedDataset || !selectedModel || selectedAlgorithms.length === 0) {
-      alert('Please select a dataset, model, and at least one algorithm');
-      return;
-    }
-    
-    const allParams = {};
-    selectedAlgorithms.forEach(algorithm => {
-      allParams[algorithm] = parameters[algorithm] || {};
-    });
-    
-    onSubmit(selectedDataset, selectedModel, selectedAlgorithms, allParams);
-  };
+const handleSubmit = (e) => {
+  e.preventDefault();
+  if (!selectedDataset || !selectedModel || selectedAlgorithms.length === 0) {
+    alert('Please select a dataset, model, and at least one algorithm');
+    return;
+  }
+
+  const allParams = {};
+  selectedAlgorithms.forEach(algorithm => {
+    allParams[algorithm] = parameters[algorithm] || {};
+  });
+
+  // Include model parameters
+  Object.assign(allParams, modelParameters);
+
+  console.log("Submitted Parameters:", allParams);
+  onSubmit(selectedDataset, selectedModel, selectedAlgorithms, allParams);
+};
+
 
   return (
     <div className="sidebar">
@@ -165,6 +194,30 @@ const [datasets] = useState([
               ))}
             </select>
           </div>
+
+          <div className="form-group">
+            <h3>Model Parameters</h3>
+            {modelParams[selectedModel]?.map(param => (
+              <div key={param.name} className="param-control">
+                <label>{param.label}:</label>
+                <input
+                  type={param.type}
+                  value={modelParameters[param.name] ?? param.default}
+                  min={param.min}
+                  max={param.max}
+                  step={param.step}
+                  onChange={(e) => 
+                    setModelParameters(prev => ({
+                      ...prev,
+                      [param.name]: Number(e.target.value)
+                    }))
+                  }
+                />
+              </div>
+            ))}
+          </div>
+
+
 
           <div className="form-group">
             <h3>Select Algorithms (Multiple)</h3>

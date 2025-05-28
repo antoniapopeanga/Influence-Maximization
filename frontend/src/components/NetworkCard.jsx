@@ -34,34 +34,35 @@ const NetworkCard = ({ network }) => {
     ],
   };
 
-  const chartOptions = {
-    responsive: true,
-    plugins: {
-      legend: {
-        display: false,
-      },
-      tooltip: {
-        callbacks: {
-          label: (context) => `Degree ${context.label}: ${context.raw}`,
-        },
+ const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false, // This is crucial for fixed height containers
+  plugins: {
+    legend: {
+      display: false,
+    },
+    tooltip: {
+      callbacks: {
+        label: (context) => `Degree ${context.label}: ${context.raw}`,
       },
     },
-    scales: {
-      x: {
-        title: {
-          display: true,
-          text: 'Degree',
-        },
-      },
-      y: {
-        title: {
-          display: true,
-          text: 'Frequency',
-        },
-        beginAtZero: true,
+  },
+  scales: {
+    x: {
+      title: {
+        display: true,
+        text: 'Degree',
       },
     },
-  };
+    y: {
+      title: {
+        display: true,
+        text: 'Frequency',
+      },
+      beginAtZero: true,
+    },
+  },
+};
 
   const imagePath = `/networks/${network.name}.jpg`;
 
@@ -113,12 +114,12 @@ const NetworkCard = ({ network }) => {
             </div>
           </div>
 
-          <div className="chart-section">
-            <h3 className="chart-title">Degree distribution</h3>
-            <div className="chart-container" >
-              <Bar data={chartData} options={chartOptions} />
+            <div className="chart-section">
+              <h3 className="chart-title">Degree distribution</h3>
+              <div className="chart-container">
+                <Bar data={chartData} options={chartOptions} />
+              </div>
             </div>
-          </div>
 
           <div className="network-metrics">
             <p><strong>Network density: </strong> {(2 * network.num_edges / (network.num_nodes * (network.num_nodes - 1))).toFixed(4)}</p>

@@ -19,7 +19,6 @@ try:
 except ImportError as e:
     print(f"[DEBUG] Failed to pre-import propagation_models: {e}", file=sys.stderr)
 
-
 def setup_logging():
     log_dir = os.path.join(os.path.dirname(__file__), 'logs')
     os.makedirs(log_dir, exist_ok=True)
@@ -40,7 +39,6 @@ def setup_logging():
 
     return log_file
 
-# structura nodului pentru coada
 class CELFNode:
     __slots__ = ['node_id', 'marginal_gain', 'last_checked']
 
@@ -50,12 +48,10 @@ class CELFNode:
         self.last_checked = 0
 
     def __lt__(self, other):
-        return self.marginal_gain > other.marginal_gain  # Max-heap
+        return self.marginal_gain > other.marginal_gain
 
-#cache pentru simularile monte carlo
 mc_cache = {}
 
-#functie pentru a simula avg_spread pentru un nod candidat
 def monte_carlo_simulation(
     model,
     nodes: Set[Union[str, int]],
@@ -89,7 +85,6 @@ def monte_carlo_simulation(
     mc_cache[key] = avg_spread
     return avg_spread
 
-#evaluare in batch-uri a nodurilor candidat pentru eficienta
 def batch_evaluate_nodes(args):
     model, nodes, seed_set, candidates, num_simulations, max_steps = args
 
@@ -109,7 +104,7 @@ def batch_evaluate_nodes(args):
 
     return results
 
-def optimized_celf(
+def celf(
     nodes: List[Union[str, int]],
     edges: List[Tuple[Union[str, int], Union[str, int]]],
     model,
@@ -123,6 +118,12 @@ def optimized_celf(
     max_steps = max(1, min(params.get('maxSteps', 5), 20))
     num_simulations = params.get('numSimulations', 50)
     num_processes = min(params.get('numProcesses', mp.cpu_count()), mp.cpu_count())
+    coverage_threshold = 0.95
+    min_marginal_gain_fraction = 0.02
+    recent_gains = []
+    grace_period = 4  # număr minim de etape înainte de a permite oprirea
+    trend_window = 4  # ultimele N câștiguri marginale de analizat
+    stagnation_threshold = len(nodes) * min_marginal_gain_fraction
 
     logging.info(f"Parameters: k={k}, num_simulations={num_simulations}, max_steps={max_steps}, processes={num_processes}")
 
@@ -132,11 +133,9 @@ def optimized_celf(
     celf_queue = []
     nodes_set = set(nodes)
 
-    #impartim nodurile in batch-uri si paralelizam evaluarea acestora
     batch_size = max(1, len(nodes) // (num_processes * 2))
     node_batches = [nodes[i:i+batch_size] for i in range(0, len(nodes), batch_size)]
 
-    #evaluarea initiala pentru a selecta primul nod din heapq cu cel mai mare castig marginal
     with mp.Pool(processes=num_processes) as pool:
         batch_args = [(model, nodes_set, seed_set, batch, num_simulations, max_steps) for batch in node_batches]
         batch_results = pool.map(batch_evaluate_nodes, batch_args)
@@ -147,12 +146,14 @@ def optimized_celf(
             heapq.heappush(celf_queue, celf_node)
 
     baseline_spread = 0
+    total_nodes = len(nodes)
+    early_stop = False
 
     for iteration in range(k):
+        recent_gains = []
         evaluation_count = 0
         best_node = None
 
-    #loop-ul CELF in care facem un numar minim de evaluari de noduri candidat
         while celf_queue:
             evaluation_count += 1
             current_node = heapq.heappop(celf_queue)
@@ -160,12 +161,10 @@ def optimized_celf(
             if current_node.node_id in seed_set:
                 continue
 
-            #daca nodul din capul cozii ramane pe pozitia sa 2 iteratii la rand este considerat cel mai influent
             if current_node.last_checked == iteration:
                 best_node = current_node
                 break
 
-            #in cazul in care nodul din capul cozii s-a schimbat refacem simularea
             candidate_seeds = seed_set + [current_node.node_id]
             candidate_spread = monte_carlo_simulation(model, nodes_set, candidate_seeds, num_simulations, max_steps)
 
@@ -173,7 +172,6 @@ def optimized_celf(
             current_node.last_checked = iteration
             heapq.heappush(celf_queue, current_node)
 
-            #daca dupa refacerea simularii noul nod din capul cozii are castig mai mic vom considera best_node nodul curent
             if celf_queue and current_node.marginal_gain >= celf_queue[0].marginal_gain:
                 best_node = current_node
                 break
@@ -184,24 +182,41 @@ def optimized_celf(
         seed_set.append(best_node.node_id)
 
         activated = set(seed_set)
-
-        #efectuam procesul de propagare pentru a activa nodurile influentate de nodul nou din multimea de seed
         for _ in range(max_steps):
             newly_activated = set(model.propagate(list(activated))) - activated
             if not newly_activated:
                 break
             activated.update(newly_activated)
 
-        #nodurile noi activate sunt adaugate in multimea totala de noduri active
+        previous_total = len(cumulative_activated)
         cumulative_activated.update(activated)
+        new_total = len(cumulative_activated)
+        gain_ratio = (new_total - previous_total) / total_nodes
+
         baseline_spread += best_node.marginal_gain
 
-        #salvam datele pentru etapa curenta
+        recent_gains.append(best_node.marginal_gain)
+        if len(recent_gains) > trend_window:
+                recent_gains.pop(0)
+
+        # Condiție 1: acoperire satisfăcătoare
+        if new_total / total_nodes >= coverage_threshold:
+            logging.info(f"Stopping early: reached {new_total}/{total_nodes} ({(new_total / total_nodes) * 100:.2f}%) coverage")
+            early_stop = True
+            break
+
+        # Condiție 2: stagnare în câștig marginal după perioada de "grace"
+        if iteration + 1 >= grace_period and all(g < stagnation_threshold for g in recent_gains):
+            logging.info(f"Stopping early: marginal gain stagnant over last {trend_window} stages")
+            early_stop = True
+            break
+
+
         stage_data = {
             "stage": iteration + 1,
             "selected_nodes": seed_set.copy(),
             "propagated_nodes": list(cumulative_activated),
-            "total_activated": len(cumulative_activated),
+            "total_activated": new_total,
             "marginal_gain": best_node.marginal_gain,
             "evaluations": evaluation_count
         }
@@ -210,9 +225,22 @@ def optimized_celf(
         logging.info(
             f"Stage {iteration+1}: Selected {best_node.node_id} "
             f"(mg={best_node.marginal_gain:.2f}), "
-            f"Total activated: {len(cumulative_activated)}, "
+            f"Total activated: {new_total}, "
             f"Evaluations: {evaluation_count}/{len(nodes)}"
         )
+
+
+    if early_stop:
+        for fill_iter in range(iteration + 1, k):
+            stage_data = {
+                "stage": fill_iter + 1,
+                "selected_nodes": seed_set.copy(),
+                "propagated_nodes": list(cumulative_activated),
+                "total_activated": len(cumulative_activated),
+                "marginal_gain": 0.0,
+                "evaluations": 0
+            }
+            stages.append(stage_data)
 
     runtime = time.time() - start_time
     logging.info(f"CELF completed in {runtime:.2f} seconds")
@@ -246,7 +274,7 @@ if __name__ == "__main__":
         num_cpus = mp.cpu_count()
         logging.info(f"Running on machine with {num_cpus} CPUs")
 
-        stages = optimized_celf(nodes, edges, model, params)
+        stages = celf(nodes, edges, model, params)
 
         output = {
             "stages": stages,

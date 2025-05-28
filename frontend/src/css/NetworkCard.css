@@ -94,11 +94,14 @@
 }
 
 .chart-container {
-  height: 10rem;
+  height: 200px; /* Fixed height */
+  min-height: 200px; /* Minimum height */
+  position: relative; /* Required for Chart.js responsiveness */
+  margin-bottom: 1rem;
 }
 
 .network-metrics {
-  margin-top: 1rem;
+  margin-top: 0rem;
   padding: 1rem;
   border-radius: 8px;
 
