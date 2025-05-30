@@ -4,11 +4,22 @@ import {CurrentSimulationAnimator} from './CurrentSimulationAnimator';
 import  {SavedRunAnimator} from './SavedRunAnimator';
 import axios from 'axios';
 import "../css/PreviewComponent.css";
+import networkLabels from '../utils/networkLabels';
 
 const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSavedRun,setIsShowingSavedRun }) => {
   const graphRef = useRef();
   const graphDataRef = useRef({ nodes: [], links: [] });
-  let layoutReadyResolver = null;
+  const modelLabels={
+    'OptimizedLinearThresholdModel': 'Linear Threshold (LT)',
+    'IndependentCascadeModel': 'Independent Cascade (IC)'
+  }
+  const algoLabels = {
+      'centrality_heuristic': 'Centrality Heuristic',
+      'degree_heuristic': 'Degree Heuristic',
+      'celf': 'CELF Optimization',
+      'classic_greedy': 'Classic Greedy',
+      'random_selection': 'Random Selection'
+    };
 
   
   // State variables
@@ -71,6 +82,13 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
     setIsShowingSavedRun(false);
     setCurrentSavedRunData(null);
   }, [graphData]);
+
+  const closeModal = () => {
+  setShowModal(false);
+  setFilterNetwork('');
+  setFilterModel('');
+  setFilterAlgorithm('');
+};
 
   useEffect(() => {
     const fetchSavedRuns = async () => {
@@ -235,21 +253,21 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
               <select value={filterNetwork} onChange={(e) => setFilterNetwork(e.target.value)}>
                 <option value="">All Networks</option>
                 {[...new Set(savedRuns.map(run => run.network_name))].map(net => (
-                  <option key={net} value={net}>{net}</option>
+                  <option key={net} value={net}>{networkLabels[net]}</option>
                 ))}
               </select>
 
               <select value={filterModel} onChange={(e) => setFilterModel(e.target.value)}>
                 <option value="">All Models</option>
                 {[...new Set(savedRuns.map(run => run.diffusion_model))].map(model => (
-                  <option key={model} value={model}>{model}</option>
+                  <option key={model} value={model}>{modelLabels[model]}</option>
                 ))}
               </select>
 
               <select value={filterAlgorithm} onChange={(e) => setFilterAlgorithm(e.target.value)}>
                 <option value="">All Algorithms</option>
                 {[...new Set(savedRuns.map(run => run.algorithm))].map(algo => (
-                  <option key={algo} value={algo}>{algo.replace(/_/g, ' ')}</option>
+                  <option key={algo} value={algo}>{algoLabels[algo]}</option>
                 ))}
               </select>
             </div>
@@ -278,11 +296,15 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
                       </div>
                       <div className="run-details">
                         <div className="detail-row">
-                          <span><strong>Network:</strong> {run.network_name}</span>
-                          <span><strong>Model:</strong> {run.diffusion_model}</span>
+                          <span><strong>Network:</strong> {networkLabels[run.network_name]}</span>
+                        </div>
+                          <div className="detail-row">
+                          <span><strong>Model:</strong> {modelLabels[run.diffusion_model]}</span>
                         </div>
                         <div className="detail-row">
                           <span><strong>Seed Size:</strong> {run.seed_size}</span>
+                          </div>
+                        <div className="detail-row">
                           <span><strong>Date:</strong> {new Date(run.timestamp).toLocaleDateString()}</span>
                         </div>
                         {run.model_params && (
@@ -301,7 +323,7 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
                       onClick={() => {
                         setSelectedRunId(run.id);
                         loadSavedRun(run.id);
-                        setShowModal(false);
+                        closeModal();
                       }}
                     >
                       Load Simulation
@@ -314,7 +336,7 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
             <div className="modal-actions">
               <button 
                 className="close-button"
-                onClick={() => setShowModal(false)}
+                onClick={closeModal}
               >
                 Close
               </button>
@@ -390,11 +412,11 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
                   <div className="simulation-info-details">
                     <div className="info-row">
                       <span className="info-label">Network:</span>
-                      <span className="info-value">{currentRun.network_name}</span>
+                      <span className="info-value">{networkLabels[currentRun.network_name]}</span>
                     </div>
                     <div className="info-row">
                       <span className="info-label">Model:</span>
-                      <span className="info-value">{currentRun.diffusion_model}</span>
+                      <span className="info-value">{modelLabels[currentRun.diffusion_model]}</span>
                     </div>
                     <div className="info-row">
                       <span className="info-label">Seeds:</span>
@@ -509,7 +531,7 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
           </div>
         )}
 
-
+        {!showModal &&
           <div className="saved-run-controls">
             <div className="saved-run-buttons">
               <button onClick={() => setShowModal(true)}>
@@ -517,6 +539,7 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
               </button>
             </div>
           </div>
+        }
         </div>
       </div>
     </>

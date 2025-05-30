@@ -18,6 +18,7 @@ import {
 import { Bar, Line, Pie, Radar, Scatter } from 'react-chartjs-2';
 import _ from 'lodash';
 import '../css/StatisticsPage.css';
+import networkLabels from '../utils/networkLabels';
 
 ChartJS.register(
   CategoryScale,
@@ -46,6 +47,15 @@ const getAlgorithmColor = (algorithm) => {
   };
   return algorithm ? colors[algorithm] : null;
 };
+
+    const algoLabels = {
+      'centrality_heuristic': 'Centrality Heuristic',
+      'degree_heuristic': 'Degree Heuristic',
+      'celf': 'CELF Optimization',
+      'classic_greedy': 'Classic Greedy',
+      'random_selection': 'Random Selection'
+    };
+
 
 const StatisticsPage = () => {
   const [algorithmRuns, setAlgorithmRuns] = useState([]);
@@ -475,7 +485,9 @@ modelCoverage: {
           <select value={selectedNetwork} onChange={e => setSelectedNetwork(e.target.value)}>
             <option value="all">All</option>
             {networks.map(net => (
-              <option key={net} value={net}>{net}</option>
+              <option key={net} value={net}>
+                {networkLabels[net] || net}
+              </option>
             ))}
           </select>
         </label>
@@ -484,7 +496,7 @@ modelCoverage: {
           <select value={selectedAlgorithm} onChange={e => setSelectedAlgorithm(e.target.value)}>
             <option value="all">All</option>
             {_.uniq(algorithmRuns.map(run => run.algorithm)).map(algo => (
-              <option key={algo} value={algo}>{algo}</option>
+              <option key={algo} value={algo}>{algoLabels[algo]}</option>
             ))}
           </select>
         </label>

@@ -183,26 +183,30 @@ canvas {
   background-color: #2a2a2a;
   padding: 2rem;
   border-radius: 8px;
-  width: 80%;
+  width: 70%;
   max-width: 800px;
-  max-height: 80vh;
+  max-height: 60vh;
   overflow-y: auto;
   color: white;
+  position: relative; /* Required for absolute positioning inside */
+  padding-bottom: 4rem;
 }
 
 .filters {
   display: flex;
   gap: 1rem;
   margin-bottom: 1.5rem;
+  background-color:#1e1e1e !important;
 }
 
 .filters select {
   padding: 0.5rem;
-  background-color: #3a3a3a;
-  color: black;
-  border: 1px solid #555;
+  background-color: #1e1e1e !important;
+  color: white !important;
+  border: 1px solid #555!important;
   border-radius: 4px;
 }
+
 
 .saved-runs-list {
   display: flex;
@@ -231,7 +235,7 @@ canvas {
 
 .run-details {
   display: flex;
-  gap: 1rem;
+  gap: 2rem;
   font-size: 0.9rem;
   color: #ccc;
 }
@@ -250,10 +254,11 @@ canvas {
 }
 
 .modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 1rem;
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
 }
+
 
 .close-button {
   padding: 0.5rem 1rem;
