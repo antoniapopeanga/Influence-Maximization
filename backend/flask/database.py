@@ -89,11 +89,11 @@ def insert_algorithm_run(
         seed_size,
         runtime,
         spread,
-        json.dumps(seed_nodes),  # Store as JSON for lists
-        json.dumps(stages),      # Store as JSON for lists
+        json.dumps(seed_nodes),
+        json.dumps(stages),
         network_name,
         diffusion_model,
-        json.dumps(model_params) # Store model parameters as JSON
+        json.dumps(model_params)
     ))
 
     conn.commit()

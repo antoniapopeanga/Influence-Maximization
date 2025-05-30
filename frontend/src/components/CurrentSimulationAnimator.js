@@ -1,4 +1,3 @@
-// CurrentSimulationAnimator.js - Handles current graph data animations
 import { AnimationController } from './AnimationController';
 
 export class CurrentSimulationAnimator extends AnimationController {
@@ -7,7 +6,7 @@ export class CurrentSimulationAnimator extends AnimationController {
     this.stateSetters = stateSetters;
   }
 
-  // Helper function to compare two sets for equality
+
   setsEqual = (set1, set2) => {
     if (set1.size !== set2.size) return false;
     for (let item of set1) {
@@ -16,7 +15,8 @@ export class CurrentSimulationAnimator extends AnimationController {
     return true;
   };
 
-  // Helper function to find the last unique stage index
+ //animam doar etapele care sunt diferite 
+ // (cazul in care avem early stopping si ultimile etape sunt completate cu ultima valida)
   findLastUniqueStageIndex = (stages) => {
     if (stages.length <= 1) return stages.length - 1;
     
@@ -28,7 +28,6 @@ export class CurrentSimulationAnimator extends AnimationController {
       const currentSeedNodes = new Set(stages[i].selected_nodes || []);
       const currentPropagatedNodes = new Set(stages[i].propagated_nodes || []);
       
-      // If this stage is different from the previous one, update last unique index
       if (i === 0 || 
           !this.setsEqual(currentSeedNodes, previousSeedNodes) || 
           !this.setsEqual(currentPropagatedNodes, previousPropagatedNodes)) {
@@ -61,6 +60,7 @@ export class CurrentSimulationAnimator extends AnimationController {
     }
   };
 
+  //animarea simularii in cazul in care este simulata la momentul curent
   startAnimation = async (algorithm, graphData) => {
     if (!graphData?.algorithm_results?.[algorithm]) {
       console.warn(`No results found for algorithm ${algorithm} in current graph data`);
@@ -94,11 +94,9 @@ export class CurrentSimulationAnimator extends AnimationController {
         continue;
       }
 
-      // Find the last unique stage to avoid animating repetitive data
       const lastUniqueStageIndex = this.findLastUniqueStageIndex(stages);
       console.log(`Animating ${lastUniqueStageIndex + 1} out of ${stages.length} stages for seed size ${seedSize}`);
 
-      // Collect all seed nodes for this seed size (from unique stages only)
       const seedNodesSet = new Set();
       for (let i = 0; i <= lastUniqueStageIndex; i++) {
         if (stages[i].selected_nodes) {
@@ -106,7 +104,6 @@ export class CurrentSimulationAnimator extends AnimationController {
         }
       }
 
-      // Color all seed nodes with algorithm color BEFORE starting stage animation
       if (seedNodesSet.size > 0) {
         const color = this.getAlgorithmColor(algorithm);
         seedNodesSet.forEach(node => {
@@ -117,7 +114,7 @@ export class CurrentSimulationAnimator extends AnimationController {
           }
         });
         
-        // Update state and refresh graph
+        // update graf
         this.stateSetters.setSeedNodes(seedNodesSet);
         this.stateSetters.setActivatedNodes(prev => new Set([...prev, ...seedNodesSet]));
         
@@ -130,12 +127,10 @@ export class CurrentSimulationAnimator extends AnimationController {
 
       const allActivatedNodes = new Set([...seedNodesSet]);
 
-      // Only animate up to the last unique stage
       for (let stageIndex = 0; stageIndex <= lastUniqueStageIndex; stageIndex++) {
         const newStage = stages[stageIndex];
         this.stateSetters.setCurrentStage({...newStage, algorithm});
 
-        // Seed nodes phase - just highlight them (they're already colored)
         const seedNodes = new Set();
         if (Array.isArray(newStage.selected_nodes)) {
           newStage.selected_nodes.forEach(node => {
@@ -147,22 +142,17 @@ export class CurrentSimulationAnimator extends AnimationController {
           this.zoomToNodes([...seedNodes], 120);
           await new Promise(resolve => setTimeout(resolve, 1500));
           
-          // Sparkle the seed nodes
+          // evidentiem nodurile de seed
           const algorithmColor = this.getAlgorithmColor(algorithm);
           await this.sparkleNodes([...seedNodes], algorithmColor, 1500);
           this.stateSetters.setHighlightedNodes(seedNodes);
           await new Promise(resolve => setTimeout(resolve, 1500));
         }
 
-        // Propagation phase
-        console.log("--- Stage Debug ---");
-        console.log("Current stage:", newStage);
-        console.log("Propagated nodes in stage data:", newStage.propagated_nodes);
-        console.log("Seed nodes in stage data:", newStage.selected_nodes);
-
+        // propagarea influentei
         const propagatedNodes = new Set();
         if (Array.isArray(newStage.propagated_nodes)) {
-          console.log("Processing propagated nodes..."); // Should appear if array exists
+          console.log("Processing propagated nodes...");
           newStage.propagated_nodes.forEach(node => {
             if (!seedNodesSet.has(node)) {
               propagatedNodes.add(node);
@@ -170,24 +160,22 @@ export class CurrentSimulationAnimator extends AnimationController {
             }
           });
         }
-        console.log("Final propagatedNodes Set:", propagatedNodes); // Check if populated
 
         if (propagatedNodes.size > 0) {
           this.zoomToNodes([...allActivatedNodes], 200);
           await new Promise(resolve => setTimeout(resolve, 1200));
           
           this.stateSetters.setHighlightedNodes(propagatedNodes);
-          // In the propagation phase:
-          console.log("All nodes in graph:", this.graphDataRef.current.nodes); // Debug all nodes
+          console.log("All nodes in graph:", this.graphDataRef.current.nodes);
           propagatedNodes.forEach(node => {
             const nodeObj = this.graphDataRef.current.nodes.find(n => String(n.id) === String(node));
-            console.log(`Searching for node ${node} - Found:`, nodeObj); // Debug node lookup
+            console.log(`Searching for node ${node} - Found:`, nodeObj);
             if (nodeObj) {
-              nodeObj.color = "#FF0000"; // Force red
+              nodeObj.color = "#FF0000";
               nodeObj.__algorithm = algorithm;
-              console.log(`Set color for node ${node} to red`); // Debug color assignment
+              console.log(`Set color for node ${node} to red`);
             } else {
-              console.warn(`Node ${node} not found in graph data!`); // Debug missing nodes
+              console.warn(`Node ${node} not found in graph data!`);
             }
           });
           this.graphRef.current.refresh();

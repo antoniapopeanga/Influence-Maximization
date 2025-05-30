@@ -1,5 +1,4 @@
 /* StatisticsPage.css */
-
 .statistics-page {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   max-width: 1200px;
@@ -129,45 +128,20 @@ h3 {
   color: #2c3e50;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .statistics-page {
-    padding: 12px;
-  }
-  
-  .filters {
-    flex-direction: column;
-    gap: 12px;
-  }
-  
-  .chart-container {
-    padding: 16px;
-    min-height: 300px;
-  }
-  
-  .tabs button {
-    flex-grow: 1;
-    text-align: center;
-    padding: 8px 12px;
-  }
-}
 
-/* Improved chart tooltips */
 canvas {
   max-width: 100%;
 }
 
-/* Adds space between selection items */
+
 select option {
   padding: 8px;
 }
 
-/* Transition effects for smooth UI */
 .chart-container, .filters, .tabs button {
   transition: all 0.3s ease;
 }
 
-/* Better focus states for accessibility */
 button:focus, select:focus {
   outline: 2px solid #3498db;
   outline-offset: 2px;

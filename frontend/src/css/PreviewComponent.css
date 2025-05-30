@@ -124,7 +124,7 @@ canvas {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 10; /* Make sure it stays above the canvas */
+  z-index: 10;
 }
 
 .graph-controls button {
@@ -166,9 +166,6 @@ canvas {
   background-color: #444;
 }
 
-
-
-/* Add to your PreviewComponent.css */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -351,4 +348,131 @@ canvas {
 .saved-runs-list {
   max-height: 400px;
   overflow-y: auto;
+}
+
+
+.simulation-info-label {
+  position: absolute;
+  bottom: 80px;
+  left: 20px;
+  background-color: rgba(30, 30, 30, 0.95);
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 12px;
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-size: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  min-width: 200px;
+  max-width: 280px;
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.simulation-info-label:hover {
+  background-color: rgba(30, 30, 30, 0.98);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.simulation-info-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #555;
+}
+
+.algorithm-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.simulation-title {
+  font-weight: 600;
+  color: #e0e0e0;
+  font-size: 11px;
+}
+
+.simulation-info-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.info-label {
+  color: #aaa;
+  font-weight: 500;
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.info-value {
+  color: #fff;
+  text-align: right;
+  flex: 1;
+  word-break: break-word;
+}
+
+.model-params-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.model-params-row .info-label {
+  margin-bottom: 2px;
+}
+
+.params-value {
+  font-size: 10px;
+  color: #ccc;
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 2px 4px;
+  border-radius: 3px;
+  word-break: break-all;
+  max-width: 100%;
+  text-align: left !important;
+}
+
+
+.simulation-info-label {
+  animation: slideInFromLeft 0.3s ease-out;
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animation-indicator {
+  margin-top:40px;
+  position: absolute;
+  right:80%;
+  z-index: 1000;
+  background-color: rgba(30, 30, 30, 0.85);
+  color: #ffffff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  pointer-events: none;
 }

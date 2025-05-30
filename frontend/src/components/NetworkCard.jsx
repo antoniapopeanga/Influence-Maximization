@@ -6,7 +6,6 @@ import networkLabels from '../utils/networkLabels';
 import networkDescriptions from '../utils/networksDescription';
 
 
-// Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const NetworkCard = ({ network }) => {
@@ -20,7 +19,6 @@ const NetworkCard = ({ network }) => {
       .slice(0, 30);
   };
 
-  // Prepare Chart.js data
   const chartData = {
     labels: getDegreeDistributionData().map(item => item.degree),
     datasets: [
@@ -36,7 +34,7 @@ const NetworkCard = ({ network }) => {
 
  const chartOptions = {
   responsive: true,
-  maintainAspectRatio: false, // This is crucial for fixed height containers
+  maintainAspectRatio: false,
   plugins: {
     legend: {
       display: false,

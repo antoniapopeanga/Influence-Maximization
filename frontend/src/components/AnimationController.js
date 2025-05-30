@@ -17,6 +17,7 @@ export class AnimationController {
     return algorithm ? colors[algorithm] : null;
   };
 
+  //zoom automat pentru realizarea animatiei
   zoomToNodes = (nodeIds, zoomDistance = 150) => {
     if (!this.graphRef.current || !this.graphDataRef.current || nodeIds.length === 0) {
       console.warn("Missing graph reference or node IDs");
@@ -99,6 +100,7 @@ export class AnimationController {
     attemptZoom();
   };
 
+  //functie pentru a face nodurile sa palpaie
   sparkleNodes = async (nodeIds, color, duration = 1500, interval = 200) => {
     const nodeIdsStr = nodeIds.map(id => String(id));
     const nodes = this.graphDataRef.current.nodes.filter(n => nodeIdsStr.includes(String(n.id)));

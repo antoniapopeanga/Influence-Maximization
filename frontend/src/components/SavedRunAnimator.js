@@ -1,4 +1,3 @@
-// SavedRunAnimator.js - Handles saved run animations
 import { AnimationController } from './AnimationController';
 
 export class SavedRunAnimator extends AnimationController {
@@ -26,6 +25,7 @@ export class SavedRunAnimator extends AnimationController {
     }
   };
 
+  //animatia pentru simulari precedente
   animateSavedRun = async (stages, seedNodes, algorithm) => {
     if (!stages || !seedNodes || !algorithm) {
       console.error('Invalid saved run data:', { stages, seedNodes, algorithm });
@@ -52,7 +52,7 @@ export class SavedRunAnimator extends AnimationController {
     const seedNodesSet = new Set(validSeedNodes);
     const algorithmColor = this.getAlgorithmColor(algorithm);
     
-    // Apply colors to nodes
+    // coloram seed nodes
     this.graphDataRef.current.nodes.forEach(node => {
       if (seedNodesSet.has(String(node.id))) {
         node.__algorithm = algorithm;
@@ -67,10 +67,9 @@ export class SavedRunAnimator extends AnimationController {
       this.graphRef.current.refresh();
     }
 
-    // Wait for layout
     await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // Check positioning
+    // se verifica daca nodurile au fost pozitionate
     const positionedNodes = this.graphDataRef.current.nodes.filter(n => 
       typeof n.x === 'number' && typeof n.y === 'number' && typeof n.z === 'number' &&
       isFinite(n.x) && isFinite(n.y) && isFinite(n.z) &&
@@ -85,15 +84,15 @@ export class SavedRunAnimator extends AnimationController {
       }
     }
 
-    // Start animation - Fixed the variable reference
+    // inceperea animatiei
     if (validSeedNodes.length > 0) {
       this.zoomToNodes(validSeedNodes, 120);
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Sparkle the seed nodes - use validSeedNodes array, not seedNodes.size
+      // evidentierea nodurilor de seed
       await this.sparkleNodes(validSeedNodes, algorithmColor, 1500);
       this.stateSetters.setHighlightedNodes(seedNodesSet);
-      await new Promise(resolve => setTimeout(resolve, 500)); // Reduced since sparkle already takes 1500ms
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     const allActivatedNodes = new Set([...validSeedNodes]);

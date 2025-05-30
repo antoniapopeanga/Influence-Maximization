@@ -30,12 +30,10 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
   const [filterModel, setFilterModel] = useState("");
   const [filterAlgorithm, setFilterAlgorithm] = useState("");
 
-
-  // Add these refs at the top of your component
   const layoutReadyResolverRef = useRef(null);
   const engineStoppedCountRef = useRef(0);
 
-  // Create animators with state setters
+  // state setters
   const stateSetters = {
     setCurrentStage,
     setIsAnimating,
@@ -51,7 +49,8 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
   const currentSimAnimator = useRef(new CurrentSimulationAnimator(graphRef, graphDataRef, stateSetters));
   const savedRunAnimator = useRef(new SavedRunAnimator(graphRef, graphDataRef, stateSetters));
 
-  // FIXED: Store original graph data and set up processed data
+  //salvarea datelor grafului initiale
+  //fetchuim datele despre rularile anterioare din backend
   useEffect(() => {
     if (!graphData) return;
 
@@ -65,12 +64,10 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
       links: graphData.edges.map(([source, target]) => ({ source, target }))
     };
 
-    // Store original data for restoration
     setOriginalGraphData(formatted);
     setProcessedGraphData(formatted);
     graphDataRef.current = formatted;
     
-    // Reset saved run state when new graph data comes in
     setIsShowingSavedRun(false);
     setCurrentSavedRunData(null);
   }, [graphData]);
@@ -89,30 +86,7 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
         fetchSavedRuns();
   }, []);
 
-
-  // Process graph data
-  useEffect(() => {
-    if (!graphData) return;
-
-    const formatted = {
-      nodes: graphData.nodes.map((id) => ({
-        id,
-        color: "#4682B4",
-        __highlighted: false,
-        __algorithm: null
-      })),
-      links: graphData.edges.map(([source, target]) => ({ source, target }))
-    };
-
-    setOriginalGraphData(formatted);
-    setProcessedGraphData(formatted);
-    graphDataRef.current = formatted;
-    
-    setIsShowingSavedRun(false);
-    setCurrentSavedRunData(null);
-  }, [graphData]);
-
-  // Animation handlers
+  //controale animatie in functie de ce a fost ales de user
   const startAnimation = (algorithm) => {
     if (isShowingSavedRun) {
       restoreOriginalGraph();
@@ -132,7 +106,7 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
       const stages = typeof data.stages === 'string' ? JSON.parse(data.stages) : data.stages;
       const seedNodes = typeof data.seed_nodes === 'string' ? JSON.parse(data.seed_nodes) : data.seed_nodes;
 
-      // Remove duplicates from seedNodes
+      //scoatem duplicatele din seedNodes
       const uniqueSeedNodes = [...new Set(seedNodes)];
 
       const formattedGraphData = {
@@ -148,6 +122,7 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
       graphDataRef.current = formattedGraphData;
       setProcessedGraphData(formattedGraphData);
       setIsShowingSavedRun(true);
+      setSelectedRunId(runId); //id ul randului simularii selectate
       
       setCurrentSavedRunData({
         stages,
@@ -200,13 +175,14 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
       setProcessedGraphData(restoredData);
       setIsShowingSavedRun(false);
       setCurrentSavedRunData(null);
+      setSelectedRunId(null);
       currentSimAnimator.current.clearAnimationData();
     }
   };
-
+//controale pentru a modifica pozitia grafului
   const rotateCamera = (direction = 'left') => {
-    const distance = 400; // how far the camera stays from center
-    const angleDelta = Math.PI / 12; // 15 degrees
+    const distance = 400;
+    const angleDelta = Math.PI / 12;
     const angle = direction === 'left' ? angleDelta : -angleDelta;
 
     const curPos = graphRef.current.cameraPosition();
@@ -241,6 +217,7 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
     });
   };
 
+  //filtrarea datelor simularilor precedente pentru selctie
   const filteredRuns = savedRuns.filter(run =>
     (!filterNetwork || run.network_name === filterNetwork) &&
     (!filterModel || run.diffusion_model === filterModel) &&
@@ -376,7 +353,6 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
                 
                 console.log(`Positioned nodes: ${positionedNodes.length}/${graphDataRef.current.nodes.length}`);
                 
-                // Only resolve if we have most nodes positioned
                 if (positionedNodes.length > graphDataRef.current.nodes.length * 0.9) {
                   if (layoutReadyResolverRef.current) {
                     console.log('Resolving layout promise');
@@ -384,7 +360,6 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
                     layoutReadyResolverRef.current = null;
                   }
                 } else if (count > 3) {
-                  // After 3 engine stops, force completion
                   console.warn('Forcing layout completion after multiple engine stops');
                   if (layoutReadyResolverRef.current) {
                     layoutReadyResolverRef.current();
@@ -394,23 +369,68 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
               }}
             />
 
+            {isShowingSavedRun && selectedRunId && (() => {
+              const currentRun = savedRuns.find(run => run.id === selectedRunId);
+              if (!currentRun) return null;
+              
+              return (
+                <div className="simulation-info-label">
+                  <div className="simulation-info-header">
+                    <span 
+                      className="algorithm-badge"
+                      style={{ 
+                        backgroundColor: getAlgorithmColor(currentRun.algorithm),
+                        color: 'white'
+                      }}
+                    >
+                      {currentRun.algorithm.replace(/_/g, ' ').toUpperCase()}
+                    </span>
+                    <span className="simulation-title">Saved Simulation</span>
+                  </div>
+                  <div className="simulation-info-details">
+                    <div className="info-row">
+                      <span className="info-label">Network:</span>
+                      <span className="info-value">{currentRun.network_name}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Model:</span>
+                      <span className="info-value">{currentRun.diffusion_model}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Seeds:</span>
+                      <span className="info-value">{currentRun.seed_size}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Activated:</span>
+                      <span className="info-value">{activatedNodes.size || currentRun.spread}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Runtime:</span>
+                      <span className="info-value">{(currentRun.runtime / 1000).toFixed(2)}s</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Date:</span>
+                      <span className="info-value">{new Date(currentRun.timestamp).toLocaleDateString()}</span>
+                    </div>
+                    {currentRun.model_params && (
+                      <div className="info-row model-params-row">
+                        <span className="info-label">Params:</span>
+                        <span className="info-value params-value">
+                          {typeof currentRun.model_params === 'string' 
+                            ? currentRun.model_params 
+                            : JSON.stringify(currentRun.model_params)
+                          }
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
           </div>
 
           <div className="info-panel">
-            {/* ADDED: Show current mode */}
-            {isShowingSavedRun && (
-              <div className="mode-indicator">
-                <span className="saved-run-indicator">📁 Viewing Saved Run</span>
-                <button 
-                  className="restore-button"
-                  onClick={restoreOriginalGraph}
-                  disabled={isAnimating}
-                >
-                  ↩️ Back to Current Graph
-                </button>
-              </div>
-            )}
-
             {currentStage && (
               <div className="algorithm-stage-info">
                 <h3>{activeAlgorithm} - {currentStage.stage}</h3>
@@ -472,7 +492,7 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
           </div>
           }
 
-          {processedGraphData && processedGraphData.nodes.length > 0 && (
+          {processedGraphData && processedGraphData.nodes.length > 0&& currentSeedSize == null && (
             <div className="graph-controls-container">
               <div className="graph-controls">
                 <button onClick={zoomIn}>➕ Zoom In</button>
@@ -482,6 +502,13 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
               </div>
             </div>
           )}
+
+          {isAnimating && (
+          <div className="animation-indicator">
+            Animation in progress...
+          </div>
+        )}
+
 
           <div className="saved-run-controls">
             <div className="saved-run-buttons">

@@ -19,9 +19,7 @@ class PropagationModel:
         return [v for u, v in self.edges if u == node] + [u for v, u in self.edges if v == node]
 
 
-class OptimizedLinearThresholdModel:
-    """Linear Threshold Model optimizat (vectorizat și eficientizat)"""
-    
+class OptimizedLinearThresholdModel:    
     def __init__(self, nodes, edges, threshold_range=(0, 1)):
         self.nodes = nodes
         self.edges = edges
@@ -81,9 +79,7 @@ class OptimizedLinearThresholdModel:
             "thresholds": self.thresholds.tolist()
         }
 
-class IndependentCascadeModel:
-    """Independent Cascade Model optimizat cu performanță îmbunătățită"""
-    
+class IndependentCascadeModel:    
     def __init__(self, nodes, edges, propagation_probability=0.1):
         self.nodes = nodes
         self.edges = edges
