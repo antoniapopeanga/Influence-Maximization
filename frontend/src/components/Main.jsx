@@ -17,6 +17,8 @@ const Main = () => {
   const [comparisonMode, setComparisonMode] = useState(false);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false); // Modal state
   const [isChartsModalOpen, setIsChartsModalOpen] = useState(false);
+  const [isShowingSavedRun, setIsShowingSavedRun] = useState(false);
+
 
   const handleSubmit = async (selectedDataset, selectedModel, selectedAlgorithms, parameters) => {
     setGraphData(null);
@@ -93,12 +95,14 @@ return (
           isLoading={isLoading}
           selectedAlgorithms={selectedAlgorithms}
           comparisonMode={comparisonMode}
+          isShowingSavedRun={isShowingSavedRun}
+          setIsShowingSavedRun={setIsShowingSavedRun}
         />
 
       </div>
 
         {/* Button container*/}
-        {graphData && (
+        {graphData&& !isShowingSavedRun && (
           <div className="action-buttons-container">
             <Button 
               type="primary" 

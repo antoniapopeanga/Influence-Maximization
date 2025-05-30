@@ -1,11 +1,17 @@
-
 import React, { useRef, useEffect, useState } from "react";
 import ForceGraph3D from "react-force-graph-3d";
+import {CurrentSimulationAnimator} from './CurrentSimulationAnimator';
+import  {SavedRunAnimator} from './SavedRunAnimator';
+import axios from 'axios';
 import "../css/PreviewComponent.css";
-import axios from'axios'
 
-const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
+const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSavedRun,setIsShowingSavedRun }) => {
   const graphRef = useRef();
+  const graphDataRef = useRef({ nodes: [], links: [] });
+  let layoutReadyResolver = null;
+
+  
+  // State variables
   const [currentStage, setCurrentStage] = useState(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [highlightedNodes, setHighlightedNodes] = useState(new Set());
@@ -13,25 +19,37 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
   const [comparisonResults, setComparisonResults] = useState([]);
   const [seedNodes, setSeedNodes] = useState(new Set());
   const [activatedNodes, setActivatedNodes] = useState(new Set());
+  const [selectedRunId, setSelectedRunId] = useState(null);
   const [currentSeedSize, setCurrentSeedSize] = useState(null);
   const [savedRuns, setSavedRuns] = useState([]);
-  const [selectedRunId, setSelectedRunId] = useState(null);
   const [processedGraphData, setProcessedGraphData] = useState({ nodes: [], links: [] });
+  const [originalGraphData, setOriginalGraphData] = useState({ nodes: [], links: [] });
+  const [currentSavedRunData, setCurrentSavedRunData] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [filterNetwork, setFilterNetwork] = useState("");
   const [filterModel, setFilterModel] = useState("");
   const [filterAlgorithm, setFilterAlgorithm] = useState("");
 
-  let layoutReadyResolver = null;
-  let layoutReadyPromise = null;
-  
-  // ADD: Keep track of original graph data
-  const [originalGraphData, setOriginalGraphData] = useState({ nodes: [], links: [] });
-  const [isShowingSavedRun, setIsShowingSavedRun] = useState(false);
-  // ADDED: Store current saved run data for animation
-  const [currentSavedRunData, setCurrentSavedRunData] = useState(null);
 
-  const graphDataRef = useRef({ nodes: [], links: [] });
+  // Add these refs at the top of your component
+  const layoutReadyResolverRef = useRef(null);
+  const engineStoppedCountRef = useRef(0);
+
+  // Create animators with state setters
+  const stateSetters = {
+    setCurrentStage,
+    setIsAnimating,
+    setHighlightedNodes,
+    setActiveAlgorithm,
+    setComparisonResults,
+    setSeedNodes,
+    setActivatedNodes,
+    setCurrentSeedSize,
+
+  };
+
+  const currentSimAnimator = useRef(new CurrentSimulationAnimator(graphRef, graphDataRef, stateSetters));
+  const savedRunAnimator = useRef(new SavedRunAnimator(graphRef, graphDataRef, stateSetters));
 
   // FIXED: Store original graph data and set up processed data
   useEffect(() => {
@@ -68,11 +86,104 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
         setSavedRuns([]);
       }
     };
-
-    fetchSavedRuns();
+        fetchSavedRuns();
   }, []);
 
-  // ADD: Function to restore original graph data
+
+  // Process graph data
+  useEffect(() => {
+    if (!graphData) return;
+
+    const formatted = {
+      nodes: graphData.nodes.map((id) => ({
+        id,
+        color: "#4682B4",
+        __highlighted: false,
+        __algorithm: null
+      })),
+      links: graphData.edges.map(([source, target]) => ({ source, target }))
+    };
+
+    setOriginalGraphData(formatted);
+    setProcessedGraphData(formatted);
+    graphDataRef.current = formatted;
+    
+    setIsShowingSavedRun(false);
+    setCurrentSavedRunData(null);
+  }, [graphData]);
+
+  // Animation handlers
+  const startAnimation = (algorithm) => {
+    if (isShowingSavedRun) {
+      restoreOriginalGraph();
+    }
+    currentSimAnimator.current.startAnimation(algorithm, graphData);
+  };
+
+  const loadSavedRun = async (runId) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/saved-runs/${runId}`);
+      const data = response.data;
+
+      if (!data || !data.stages || !data.seed_nodes || !data.algorithm || !data.graph_data) {
+        throw new Error('Incomplete saved run data structure');
+      }
+
+      const stages = typeof data.stages === 'string' ? JSON.parse(data.stages) : data.stages;
+      const seedNodes = typeof data.seed_nodes === 'string' ? JSON.parse(data.seed_nodes) : data.seed_nodes;
+
+      // Remove duplicates from seedNodes
+      const uniqueSeedNodes = [...new Set(seedNodes)];
+
+      const formattedGraphData = {
+        nodes: data.graph_data.nodes.map(id => ({
+          id,
+          color: "#4682B4",
+          __highlighted: false,
+          __algorithm: null
+        })),
+        links: data.graph_data.edges.map(([source, target]) => ({ source, target }))
+      };
+      
+      graphDataRef.current = formattedGraphData;
+      setProcessedGraphData(formattedGraphData);
+      setIsShowingSavedRun(true);
+      
+      setCurrentSavedRunData({
+        stages,
+        seedNodes: uniqueSeedNodes,
+        algorithm: data.algorithm
+      });
+
+      savedRunAnimator.current.clearAnimationData();
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      if (graphRef.current) {
+        graphRef.current.refresh();
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+      
+      savedRunAnimator.current.animateSavedRun(stages, seedNodes, data.algorithm);
+      
+    } catch (error) {
+      console.error('Error loading saved run:', error);
+      alert(`Failed to load saved run: ${error.message}`);
+    }
+  };
+
+  const getAlgorithmColor = (algorithm) => {
+    const colors = {
+      classic_greedy: "rgb(255, 105, 180)", // hot pink
+      random_selection: "rgb(50, 205, 50)", // lime green
+      degree_heuristic: "rgb(79, 15, 206)", // medium purple
+      centrality_heuristic: "rgb(255, 215, 0)", // gold
+      celf: "rgb(19, 192, 169)", // turqoise
+    };
+    return algorithm ? colors[algorithm] : null;
+  };
+
+
   const restoreOriginalGraph = () => {
     if (originalGraphData.nodes.length > 0) {
       const restoredData = {
@@ -89,589 +200,7 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms }) => {
       setProcessedGraphData(restoredData);
       setIsShowingSavedRun(false);
       setCurrentSavedRunData(null);
-      clearAnimationData();
-    }
-  };
-
-// Function to create a new layout promise
-const createLayoutPromise = () => {
-  layoutReadyPromise = new Promise(resolve => {
-    layoutReadyResolver = resolve;
-    console.log("Created new layout promise");
-  });
-  return layoutReadyPromise;
-};
-
-const loadSavedRun = async (runId) => {
-  try {
-    const response = await axios.get(`http://localhost:5000/saved-runs/${runId}`);
-    const data = response.data;
-
-    if (!data || !data.stages || !data.seed_nodes || !data.algorithm || !data.graph_data) {
-      throw new Error('Incomplete saved run data structure');
-    }
-
-    const stages = typeof data.stages === 'string' ? JSON.parse(data.stages) : data.stages;
-    const seedNodes = typeof data.seed_nodes === 'string' ? JSON.parse(data.seed_nodes) : data.seed_nodes;
-
-    const loadedNodes = data.graph_data.nodes;
-    const loadedEdges = data.graph_data.edges;
-
-    const formattedGraphData = {
-      nodes: loadedNodes.map(id => ({
-        id,
-        color: "#4682B4",
-        __highlighted: false,
-        __algorithm: null
-      })),
-      links: loadedEdges.map(([source, target]) => ({ source, target }))
-    };
-    
-    console.log("Setting new graph data for saved run");
-    graphDataRef.current = formattedGraphData;
-    setProcessedGraphData(formattedGraphData);
-    setIsShowingSavedRun(true);
-    
-    // ADDED: Store the saved run data for animation
-    setCurrentSavedRunData({
-      stages,
-      seedNodes,
-      algorithm: data.algorithm
-    });
-
-    clearAnimationData();
-    
-    // Wait for the graph to process the new data
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Force refresh and wait for layout
-    if (graphRef.current) {
-      graphRef.current.refresh();
-      console.log("Graph refreshed, waiting for layout...");
-      
-      // Wait for the simulation to run
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
-    
-    console.log("Starting animation after layout wait");
-    animateSavedRun(stages, seedNodes, data.algorithm);
-    
-  } catch (error) {
-    console.error('Error loading saved run:', error);
-    alert(`Failed to load saved run: ${error.message}`);
-  }
-};
-
-  // initializam setarile grafului
-useEffect(() => {
-  if (graphRef.current && processedGraphData.nodes.length > 0) {
-    console.log("Initializing graph with", processedGraphData.nodes.length, "nodes");
-    
-    // Force the graph to restart its simulation
-    graphRef.current.refresh();
-    
-    // Configure forces
-    graphRef.current.d3Force("charge").strength(-300);
-    graphRef.current.d3Force("link").distance(250);
-    
-    // Initial zoom
-    setTimeout(() => {
-      if (graphRef.current) {
-        graphRef.current.zoomToFit(1000, 100);
-        graphRef.current.cameraPosition({ z: 400 }); // zoom out more
-      }
-    }, 500);
-  }
-}, [processedGraphData]);
-
-  // actualizam culorile nodurilor pe masura ce ruleaza algo
-  useEffect(() => {
-    if (graphRef.current && graphDataRef.current.nodes.length > 0) {
-      const graphNodes = graphDataRef.current.nodes;
-      
-      graphNodes.forEach(node => {
-        const isHighlighted = highlightedNodes.has(node.id);
-        const isSeedNode = seedNodes.has(node.id);
-        const isActivated = activatedNodes.has(node.id);
-        const algorithmColor = getAlgorithmColor(node.__algorithm);
-        
-        if (isSeedNode && activeAlgorithm) {
-          // seed nodes= culoarea algortimului
-          node.color = algorithmColor || "#4682B4";
-        } else if (isActivated) {
-          // altfel rosu
-          node.color = algorithmColor 
-            ? algorithmColor.replace(')', ', 0.5)').replace('rgb', 'rgba')
-            : "#FF0000"; 
-        }  else {
-          node.color = "#4682B4";
-        }
-        
-        node.__highlighted = isHighlighted;
-      });
-
-      graphRef.current.refresh();
-    }
-  }, [highlightedNodes, seedNodes, activatedNodes, activeAlgorithm]);
-
-  useEffect(() => {
-    if (currentSeedSize !== null) {
-      const seedSizeElement = document.querySelector('.seed-size-info');
-      if (seedSizeElement) {
-        seedSizeElement.classList.add('show');
-        setTimeout(() => {
-          seedSizeElement.classList.remove('show');
-        }, 1000); 
-      }
-    }
-  }, [currentSeedSize]);
-  
-  const getAlgorithmColor = (algorithm) => {
-    const colors = {
-      classic_greedy: "rgb(255, 105, 180)", // hot pink
-      random_selection: "rgb(50, 205, 50)", // lime green
-      degree_heuristic: "rgb(79, 15, 206)", // medium purple
-      centrality_heuristic: "rgb(255, 215, 0)", // gold
-      celf: "rgb(19, 192, 169)", // turqoise
-    };
-    return algorithm ? colors[algorithm] : null;
-  };
-
-  const clearAnimationData = () => {
-    setHighlightedNodes(new Set());
-    setCurrentStage(null);
-    setActivatedNodes(new Set());
-    setCurrentSeedSize(null);
-    setSeedNodes(new Set());
-    
-    // resetam datele grafului
-    if (graphDataRef.current) {
-      graphDataRef.current.nodes.forEach(node => {
-        node.__algorithm = null;
-        node.color = "#4682B4"; 
-      });
-    }
-    
-    if (graphRef.current) {
-      graphRef.current.refresh();
-    }
-  };
-
-const zoomToNodes = (nodeIds, zoomDistance = 150) => {
-  if (!graphRef.current || !graphDataRef.current || nodeIds.length === 0) {
-    console.warn("Missing graph reference or node IDs");
-    return;
-  }
-
-  console.log('Attempting to zoom to', nodeIds.length, 'nodes:', nodeIds);
-
-  const attemptZoom = (attempt = 1, maxAttempts = 15) => {
-    setTimeout(() => {
-      // Get all nodes from the graph
-      const allNodes = graphDataRef.current.nodes;
-      console.log(`Attempt ${attempt}: Checking ${allNodes.length} total nodes`);
-      
-      // FIXED: Find target nodes by converting both to strings for comparison
-      const targetNodeIds = nodeIds.map(id => String(id));
-      const targetNodes = allNodes.filter(n => targetNodeIds.includes(String(n.id)));
-      console.log(`Found ${targetNodes.length} target nodes out of ${nodeIds.length} requested`);
-      
-      if (targetNodes.length === 0) {
-        console.error("No target nodes found in graph data");
-        console.log("Available node IDs (first 10):", allNodes.slice(0, 10).map(n => n.id));
-        console.log("Requested node IDs:", nodeIds);
-        return;
-      }
-
-      // Check which nodes have valid positions
-      const positionedNodes = targetNodes.filter(n => {
-        const hasPosition = n.x !== undefined && n.y !== undefined && n.z !== undefined;
-        const isValidPosition = typeof n.x === 'number' && typeof n.y === 'number' && typeof n.z === 'number';
-        const isFinitePosition = isFinite(n.x) && isFinite(n.y) && isFinite(n.z);
-        const isNonZero = !(n.x === 0 && n.y === 0 && n.z === 0); // Sometimes nodes start at origin
-        
-        if (hasPosition && isValidPosition && isFinitePosition) {
-          console.log(`Node ${n.id} position:`, { x: n.x, y: n.y, z: n.z });
-        }
-        
-        return hasPosition && isValidPosition && isFinitePosition && isNonZero;
-      });
-
-      console.log(`Attempt ${attempt}: Found ${positionedNodes.length} positioned nodes`);
-
-      // If we have positioned nodes, zoom to them
-      if (positionedNodes.length > 0) {
-        const center = {
-          x: positionedNodes.reduce((sum, n) => sum + n.x, 0) / positionedNodes.length,
-          y: positionedNodes.reduce((sum, n) => sum + n.y, 0) / positionedNodes.length,
-          z: positionedNodes.reduce((sum, n) => sum + n.z, 0) / positionedNodes.length
-        };
-
-        // Calculate adaptive zoom distance
-        const bounds = {
-          minX: Math.min(...positionedNodes.map(n => n.x)),
-          maxX: Math.max(...positionedNodes.map(n => n.x)),
-          minY: Math.min(...positionedNodes.map(n => n.y)),
-          maxY: Math.max(...positionedNodes.map(n => n.y)),
-          minZ: Math.min(...positionedNodes.map(n => n.z)),
-          maxZ: Math.max(...positionedNodes.map(n => n.z))
-        };
-
-        const spread = Math.max(
-          bounds.maxX - bounds.minX,
-          bounds.maxY - bounds.minY,
-          bounds.maxZ - bounds.minZ
-        );
-        
-        const adaptiveZoomDistance = Math.max(zoomDistance, spread * 2);
-
-        console.log(`Zooming to center:`, center, `with distance:`, adaptiveZoomDistance);
-
-        try {
-          graphRef.current.cameraPosition(
-            { x: center.x, y: center.y, z: center.z + adaptiveZoomDistance },
-            center,
-            1500
-          );
-          console.log("Zoom completed successfully");
-        } catch (error) {
-          console.error("Error during zoom:", error);
-        }
-        
-        return;
-      }
-
-      // If no positioned nodes and haven't exceeded attempts, try again
-      if (attempt < maxAttempts) {
-        console.warn(`No positioned nodes found. Trying again in 1 second... (attempt ${attempt}/${maxAttempts})`);
-        
-        // Try to force the simulation to run
-        if (attempt === 3 && graphRef.current) {
-          console.log("Forcing graph refresh...");
-          graphRef.current.refresh();
-        }
-        
-        attemptZoom(attempt + 1, maxAttempts);
-      } else {
-        console.error(`Failed to find positioned nodes after ${maxAttempts} attempts`);
-        // Final fallback
-        if (graphRef.current) {
-          console.log("Using fallback zoom to fit");
-          graphRef.current.zoomToFit(2000);
-        }
-      }
-    }, attempt === 1 ? 500 : 1000);
-  };
-
-  attemptZoom();
-};
-
-  const sparkleNodes = async (nodeIds, color, duration = 1500, interval = 200) => {
-    // FIXED: Convert nodeIds to strings for comparison
-    const nodeIdsStr = nodeIds.map(id => String(id));
-    const nodes = graphDataRef.current.nodes.filter(n => nodeIdsStr.includes(String(n.id)));
-
-    console.log(`Sparkling ${nodes.length} nodes out of ${nodeIds.length} requested`);
-
-    const sparkleSteps = Math.floor(duration / interval);
-    for (let i = 0; i < sparkleSteps; i++) {
-      nodes.forEach(node => {
-        node.color = i % 2 === 0 
-          ? color.replace('rgb', 'rgba').replace(')', ', 1)')
-          : color.replace('rgb', 'rgba').replace(')', ', 0.3)');
-      });
-      graphRef.current.refresh();
-      await new Promise(resolve => setTimeout(resolve, interval));
-    }
-
-    // Restore to full color after sparkle
-    nodes.forEach(node => {
-      node.color = color;
-    });
-    graphRef.current.refresh();
-  };
-
-  // Add this new function to zoom to all activated nodes
-  const zoomToActivatedNodes = (activatedNodeIds) => {
-    if (activatedNodeIds.length === 0) return;
-    
-    // Use a larger zoom distance for activated nodes view
-    zoomToNodes(activatedNodeIds, 200);
-  };
-
-  // FIXED: Update startAnimation to ensure we're using current graph data
-  const startAnimation = async (algorithm) => {
-    // FIXED: Restore original graph if we were showing a saved run
-    if (isShowingSavedRun) {
-      restoreOriginalGraph();
-      // Wait for graph to be restored
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-
-    // FIXED: Ensure we have the current graph data
-    if (!graphData?.algorithm_results?.[algorithm]) {
-      console.warn(`No results found for algorithm ${algorithm} in current graph data`);
-      return;
-    }
-
-    clearAnimationData();
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    const algorithmResults = graphData.algorithm_results[algorithm];
-    
-    setActiveAlgorithm(algorithm);
-    setIsAnimating(true);
-
-    const seedSizes = Object.keys(algorithmResults.stages_by_seed)
-      .map(Number)
-      .sort((a, b) => a - b);
-
-    for (const seedSize of seedSizes) {
-      clearAnimationData();
-      setCurrentSeedSize(seedSize);
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const stages = algorithmResults.stages_by_seed[seedSize];
-      
-      if (!stages || stages.length === 0) {
-        console.warn(`No stages found for seed size ${seedSize}`);
-        continue;
-      }
-
-      const seedNodesSet = new Set();
-      stages.forEach(stage => {
-        if (stage.selected_nodes) {
-          stage.selected_nodes.forEach(node => seedNodesSet.add(node));
-        }
-      });
-
-      // Track all activated nodes throughout the process
-      const allActivatedNodes = new Set();
-
-      for (let stageIndex = 0; stageIndex < stages.length; stageIndex++) {
-        const newStage = stages[stageIndex];
-        setCurrentStage({...newStage, algorithm});
-
-        // === SEED NODES PHASE ===
-        const seedNodes = new Set();
-        if (Array.isArray(newStage.selected_nodes)) {
-          newStage.selected_nodes.forEach(node => {
-            seedNodes.add(node);
-            allActivatedNodes.add(node);
-          });
-        }
-        
-        // 1. First zoom to seed nodes WITHOUT coloring
-        if (seedNodes.size > 0) {
-          zoomToNodes([...seedNodes], 120);
-          
-          // Wait for zoom to complete
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          
-          // 2. Then color and sparkle the seed nodes
-          const color = getAlgorithmColor(algorithm);
-          seedNodes.forEach(node => {
-            const nodeObj = graphDataRef.current.nodes.find(n => String(n.id) === String(node));
-            if (nodeObj) {
-              nodeObj.__algorithm = algorithm;
-            }
-          });
-          setSeedNodes(seedNodes);
-          setHighlightedNodes(seedNodes);
-          setActivatedNodes(prev => new Set([...prev, ...seedNodes]));
-
-          // Sparkle effect before final color
-          await sparkleNodes([...seedNodes], color);
-
-          // Wait to show the colored seed nodes
-          await new Promise(resolve => setTimeout(resolve, 1500));
-        }
-
-        // === PROPAGATION PHASE ===
-        const propagatedNodes = new Set();
-        if (Array.isArray(newStage.propagated_nodes)) {
-          newStage.propagated_nodes.forEach(node => {
-            if (!seedNodesSet.has(node)) {
-              propagatedNodes.add(node);
-              allActivatedNodes.add(node);
-            }
-          });
-        }
-
-        if (propagatedNodes.size > 0) {
-          // 3. Zoom out to show all activated nodes (seed + propagated)
-          zoomToActivatedNodes([...allActivatedNodes]);
-          
-          // Wait for zoom to complete
-          await new Promise(resolve => setTimeout(resolve, 1200));
-          
-          // 4. Then color the propagated nodes
-          setHighlightedNodes(propagatedNodes);
-          setActivatedNodes(prev => new Set([...prev, ...propagatedNodes]));
-          
-          // The propagated nodes will be colored by the useEffect that watches state changes
-          
-          // Wait to show the propagation effect
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 1500));
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsAnimating(false);
-    setCurrentSeedSize(null);
-    
-    if (algorithmResults.metrics) {
-      setComparisonResults(prev => [
-        ...prev.filter(r => r.algorithm !== algorithm),
-        { 
-          algorithm, 
-          ...algorithmResults.metrics,
-          seed_nodes: Array.from(
-            new Set(
-              seedSizes.flatMap(size => 
-                algorithmResults.stages_by_seed[size]
-                  .flatMap(stage => stage.selected_nodes || [])
-              )
-            )
-          )
-        }
-      ]);
-    }
-  };
-
-const animateSavedRun = async (stages, seedNodes, algorithm) => {
-  if (!stages || !seedNodes || !algorithm) {
-    console.error('Invalid saved run data:', { stages, seedNodes, algorithm });
-    return;
-  }
-
-  console.log('Starting animation with data:', {
-    stagesCount: stages.length,
-    seedNodesCount: seedNodes.length,
-    algorithm,
-    seedNodes: seedNodes
-  });
-
-  clearAnimationData();
-  setActiveAlgorithm(algorithm);
-  setIsAnimating(true);
-  setCurrentSeedSize(seedNodes.length);
-
-  // FIXED: Convert seed nodes to strings and ensure they exist in current graph
-  const seedNodesStr = seedNodes.map(id => String(id));
-  const availableNodes = graphDataRef.current.nodes.map(n => String(n.id));
-  const validSeedNodes = seedNodesStr.filter(id => availableNodes.includes(id));
-  
-  console.log(`Valid seed nodes: ${validSeedNodes.length}/${seedNodes.length}`);
-  console.log('Seed nodes:', validSeedNodes);
-  
-  if (validSeedNodes.length === 0) {
-    console.error('No valid seed nodes found in current graph');
-    setIsAnimating(false);
-    return;
-  }
-
-  const seedNodesSet = new Set(validSeedNodes);
-  const algorithmColor = getAlgorithmColor(algorithm);
-  
-  // Apply colors to nodes
-  graphDataRef.current.nodes.forEach(node => {
-    if (seedNodesSet.has(String(node.id))) {
-      node.__algorithm = algorithm;
-      node.color = algorithmColor;
-    }
-  });
-  
-  setSeedNodes(seedNodesSet);
-  setActivatedNodes(seedNodesSet);
-  
-  // Force graph refresh to show colors
-  if (graphRef.current) {
-    graphRef.current.refresh();
-  }
-
-  console.log("Waiting for graph layout before starting zoom...");
-  
-  // Wait longer for the layout to complete
-  await new Promise(resolve => setTimeout(resolve, 3000));
-  
-  // Check if any nodes are positioned
-  const positionedNodes = graphDataRef.current.nodes.filter(n => 
-    typeof n.x === 'number' && typeof n.y === 'number' && typeof n.z === 'number' &&
-    isFinite(n.x) && isFinite(n.y) && isFinite(n.z) &&
-    !(n.x === 0 && n.y === 0 && n.z === 0)
-  );
-  
-  console.log(`Before animation: ${positionedNodes.length}/${graphDataRef.current.nodes.length} nodes are positioned`);
-  
-  if (positionedNodes.length === 0) {
-    console.warn("No nodes are positioned - forcing layout");
-    if (graphRef.current) {
-      graphRef.current.zoomToFit(2000);
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-  }
-
-  // Start the actual animation
-  console.log("Starting seed node zoom...");
-  zoomToNodes([...validSeedNodes], 120);
-  await new Promise(resolve => setTimeout(resolve, 3000));
-
-  // Animate through stages
-  const allActivatedNodes = new Set([...validSeedNodes]);
-
-  for (let stageIndex = 0; stageIndex < stages.length; stageIndex++) {
-    const stage = stages[stageIndex];
-    if (!stage) continue;
-
-    console.log(`Processing stage ${stageIndex + 1}:`, stage);
-
-    setCurrentStage({
-      stage: `Stage ${stage.stage || stageIndex + 1}`,
-      selected_nodes: stage.selected_nodes || [],
-      propagated_nodes: stage.propagated_nodes || [],
-      total_activated: stage.total_activated || 0,
-      marginal_gain: stage.marginal_gain || 0,
-      evaluations: stage.evaluations || 0
-    });
-
-    if (stage.propagated_nodes?.length) {
-      // FIXED: Convert propagated nodes to strings and filter valid ones
-      const propagatedNodesStr = stage.propagated_nodes
-        .map(id => String(id))
-        .filter(id => availableNodes.includes(id) && !seedNodesSet.has(id));
-
-      if (propagatedNodesStr.length > 0) {
-        console.log(`Adding ${propagatedNodesStr.length} propagated nodes`);
-        propagatedNodesStr.forEach(n => allActivatedNodes.add(n));
-        setActivatedNodes(new Set(allActivatedNodes));
-
-        // Zoom to show all activated nodes
-        zoomToNodes([...allActivatedNodes], 200);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Sparkle effect for new nodes
-        await sparkleNodes([...propagatedNodesStr], "#FF0000", 1200);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-    
-    await new Promise(resolve => setTimeout(resolve, 500));
-  }
-
-  console.log("Animation sequence complete");
-  setIsAnimating(false);
-};
-
-  // ADDED: Function to replay current saved run
-  const replaySavedRun = () => {
-    if (currentSavedRunData && isShowingSavedRun) {
-      const { stages, seedNodes, algorithm } = currentSavedRunData;
-      animateSavedRun(stages, seedNodes, algorithm);
+      currentSimAnimator.current.clearAnimationData();
     }
   };
 
@@ -832,21 +361,34 @@ const animateSavedRun = async (stages, seedNodes, algorithm) => {
               enableNodeDrag={false}
               enableNavigationControls={true}
               showNavInfo={false}
+
               onEngineStop={() => {
-                console.log("ForceGraph3D engine stopped - layout should be complete");
-                const positionedCount = graphDataRef.current.nodes.filter(n => 
-                  typeof n.x === 'number' && typeof n.y === 'number' && typeof n.z === 'number' &&
-                  isFinite(n.x) && isFinite(n.y) && isFinite(n.z) &&
-                  !(n.x === 0 && n.y === 0 && n.z === 0)
-                ).length;
-                console.log(`Engine stopped: ${positionedCount}/${graphDataRef.current.nodes.length} nodes positioned`);
+                const count = ++engineStoppedCountRef.current;
+                console.log(`Engine stop event #${count}`);
                 
-                if (layoutReadyResolver) {
-                  try {
-                    layoutReadyResolver();
-                    layoutReadyResolver = null; // Clear to prevent multiple calls
-                  } catch (error) {
-                    console.error("Error resolving layout promise:", error);
+                const positionedNodes = graphDataRef.current.nodes.filter(n => 
+                  typeof n.x === 'number' && 
+                  typeof n.y === 'number' && 
+                  typeof n.z === 'number' &&
+                  !isNaN(n.x) && !isNaN(n.y) && !isNaN(n.z) &&
+                  !(n.x === 0 && n.y === 0 && n.z === 0)
+                );
+                
+                console.log(`Positioned nodes: ${positionedNodes.length}/${graphDataRef.current.nodes.length}`);
+                
+                // Only resolve if we have most nodes positioned
+                if (positionedNodes.length > graphDataRef.current.nodes.length * 0.9) {
+                  if (layoutReadyResolverRef.current) {
+                    console.log('Resolving layout promise');
+                    layoutReadyResolverRef.current();
+                    layoutReadyResolverRef.current = null;
+                  }
+                } else if (count > 3) {
+                  // After 3 engine stops, force completion
+                  console.warn('Forcing layout completion after multiple engine stops');
+                  if (layoutReadyResolverRef.current) {
+                    layoutReadyResolverRef.current();
+                    layoutReadyResolverRef.current = null;
                   }
                 }
               }}
@@ -886,7 +428,7 @@ const animateSavedRun = async (stages, seedNodes, algorithm) => {
               </div>
             )}
 
-            {comparisonResults.length > 0 && (
+            {!isShowingSavedRun && comparisonResults.length > 0 && (
               <div className="comparison-results">
                 <h3>Algorithm Comparison</h3>
                 <table>
@@ -912,7 +454,7 @@ const animateSavedRun = async (stages, seedNodes, algorithm) => {
               </div>
             )}
           </div>
-
+        {!isShowingSavedRun &&
           <div className="control-panel">
             <div className="algorithm-buttons">
               {selectedAlgorithms?.map((algorithm) => (
@@ -928,6 +470,7 @@ const animateSavedRun = async (stages, seedNodes, algorithm) => {
               ))}
             </div>
           </div>
+          }
 
           {processedGraphData && processedGraphData.nodes.length > 0 && (
             <div className="graph-controls-container">
