@@ -139,3 +139,216 @@ canvas {
 .graph-controls button:hover {
   background-color: #444;
 }
+
+.saved-run-controls {
+  margin-top:20px;
+  position: absolute;
+  left:80%;
+  z-index: 1000;
+  background: rgba(30, 30, 30, 0.85);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.saved-run-controls select,
+.saved-run-controls button {
+  padding: 6px 10px;
+  font-size: 14px;
+  background-color: #2e2e2e;
+  color: white;
+  border: 1px solid #555;
+  outline: none;
+  cursor: pointer;
+}
+
+.saved-run-controls button:hover {
+  background-color: #444;
+}
+
+
+
+/* Add to your PreviewComponent.css */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: #2a2a2a;
+  padding: 2rem;
+  border-radius: 8px;
+  width: 80%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+  color: white;
+}
+
+.filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.filters select {
+  padding: 0.5rem;
+  background-color: #3a3a3a;
+  color: black;
+  border: 1px solid #555;
+  border-radius: 4px;
+}
+
+.saved-runs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.saved-run-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem;
+  background-color: #3a3a3a;
+  border-radius: 4px;
+}
+
+.run-info {
+  flex: 1;
+}
+
+.run-algorithm {
+  font-weight: bold;
+  margin-bottom: 0.3rem;
+}
+
+.run-details {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+.load-run-button {
+  padding: 0.5rem 1rem;
+  background-color: #4682B4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.load-run-button:hover {
+  background-color: #5a92c5;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.close-button {
+  padding: 0.5rem 1rem;
+  background-color: #555;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.close-button:hover {
+  background-color: #666;
+}
+
+
+.saved-run-item {
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #2a2a2a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.run-info {
+  flex: 1;
+}
+
+.run-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.run-metrics {
+  display: flex;
+  gap: 15px;
+  font-size: 0.9em;
+}
+
+.run-metrics span {
+  background: #444;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 0.9em;
+}
+
+.model-params {
+  font-size: 0.8em;
+  color: #bbb;
+  margin-top: 4px;
+  word-break: break-all;
+}
+
+.load-run-button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s;
+}
+
+.load-run-button:hover {
+  background: #45a049;
+}
+
+.no-runs {
+  text-align: center;
+  color: #888;
+  padding: 20px;
+  font-style: italic;
+}
+
+.modal-content {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.saved-runs-list {
+  max-height: 400px;
+  overflow-y: auto;
+}

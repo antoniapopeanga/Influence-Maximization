@@ -12,6 +12,7 @@ import sys
 import uuid
 import hashlib
 import sqlite3
+import csv
 
 #initializam db
 from database import init_db, insert_network_stats, get_all_network_stats,insert_algorithm_run,get_all_algorithm_runs
@@ -19,7 +20,7 @@ from database import init_db, insert_network_stats, get_all_network_stats,insert
 init_db()
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:3000"])
+CORS(app)
 
 DATASET_FOLDER = "../../datasets/csv_files"
 
@@ -388,6 +389,69 @@ def get_statistics():
 
     results = [dict(row) for row in rows]
     return jsonify({'stats': results})
+
+
+#endpoint-uri pentru returnarea datelor necesare la animarea simularilor precedente
+@app.route('/saved-runs', methods=['GET'])
+def get_saved_runs():
+    conn = sqlite3.connect('networks.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, algorithm, seed_size, network_name, diffusion_model, timestamp,runtime, spread FROM algorithm_runs ORDER BY timestamp DESC')
+    runs = cursor.fetchall()
+    conn.close()
+    
+    result = [{
+        "id": row[0],
+        "algorithm": row[1],
+        "seed_size": row[2],
+        "network_name": row[3],
+        "diffusion_model": row[4],
+        "timestamp": row[5],
+        "runtime": row[6],
+        "spread": row[7]
+    } for row in runs]
+
+    return jsonify(result)
+@app.route('/saved-runs/<int:run_id>', methods=['GET'])
+def get_saved_run(run_id):
+    conn = sqlite3.connect('networks.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT seed_nodes, stages, algorithm, network_name FROM algorithm_runs WHERE id = ?', (run_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        project_root = "C:/Users/Antonia/Desktop/Influence Maximization models/Influence-Maximization"
+        network, network_id = row[3].split()
+        base_path = os.path.join(project_root, "datasets", "csv_files", network)
+
+        nodes_file = os.path.join(base_path, f"{network_id}_nodes.csv")
+        edges_file = os.path.join(base_path, f"{network_id}_edges.csv")
+
+        nodes = []
+        edges = []
+        with open(nodes_file, newline='') as f:
+            reader = csv.DictReader(f)
+            for r in reader:
+                nodes.append(r['node_id'])
+
+        with open(edges_file, newline='') as f:
+            reader = csv.DictReader(f)
+            for r in reader:
+                edges.append([r['source'], r['target']])
+
+        return jsonify({
+            "seed_nodes": eval(row[0]),
+            "stages": eval(row[1]),
+            "algorithm": row[2],
+            "graph_data": {
+                "nodes": nodes,
+                "edges": edges
+            }
+        })
+
+    return jsonify({"error": "Not found"}), 404
+
 
 
 if __name__ == "__main__":
