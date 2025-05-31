@@ -7,7 +7,9 @@ const Navbar = () => {
 
   return (
     <nav className="navbar">
+
       <div className="navbar-title" onClick={() => navigate('/')}>
+        <img src="/logo192.png" class="navbar-logo"></img>
         GraphNet
       </div>
       <div className="navbar-buttons">

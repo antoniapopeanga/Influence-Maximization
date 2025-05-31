@@ -33,6 +33,9 @@
 }
 
 .navbar-title {
+  display: flex;
+  align-items: left;
+  gap: 2px; /* Space between logo and text */
   font-size: 30px;
   font-weight: 700;
   cursor: pointer;
@@ -44,6 +47,15 @@
   z-index: 1;
 }
 
+.navbar-logo {
+  height: 40px; /* Adjust based on your navbar height */
+  width: auto;
+  transition: all 0.3s ease;
+}
+.navbar-title:hover .navbar-logo {
+  transform: translateY(-1px);
+  filter: drop-shadow(0 2px 8px rgba(180, 210, 231, 0.4)) hue-rotate(169deg) saturate(1.2) brightness(1.1);
+}
 .navbar-title:hover {
   color: var(--light-blue);
   transform: translateY(-1px);

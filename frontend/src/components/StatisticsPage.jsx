@@ -553,11 +553,78 @@ modelCoverage: {
             <li><strong>Coverage</strong>: Fraction of nodes influenced in the network.</li>
             <li><strong>Runtime Efficiency</strong>: Normalized runtime performance (higher is better).</li>
             <li><strong>Scalability</strong>: Efficiency as the network grows, based on runtime per node.</li>
-            <li><strong>Saturation Score</strong>: Spread normalized by the highest saturation observed.</li>
+            <li><strong>Saturation Score</strong>: How well the algorithm fills the network relative to the best possible performance observed.</li>
             <li><strong>Consistency</strong>: How stable the algorithm’s results are across runs.</li>
           </ul>
         </div>
       )}
+
+        {selectedTab === 'modelCoverage' && (
+          <div className="metric-explanation">
+            <h3>About Diffusion Model Coverage</h3>
+            <p>
+              This chart compares coverage performance between two diffusion models:
+            </p>
+            <ul>
+              <li><strong>Independent Cascade (IC)</strong>: Each activated node attempts to activate 
+              its neighbors independently with a fixed probability (0.01, 0.05, or 0.1). Higher 
+              probabilities lead to more aggressive spreading but may cause rapid saturation.</li>
+              <li><strong>Linear Threshold (LT)</strong>: Nodes are activated when the cumulative 
+              influence from their activated neighbors exceeds a threshold. This model captures 
+              social reinforcement effects where multiple influences are needed for activation.</li>
+            </ul>
+            <p>
+              The different IC probabilities show how activation likelihood affects overall network 
+              coverage, while LT represents a fundamentally different spreading mechanism based on 
+              cumulative social pressure.
+            </p>
+          </div>
+        )}
+
+        {selectedTab === 'clusteringImpact' && (
+          <div className="metric-explanation">
+            <h3>About Clustering Coefficient Impact</h3>
+            <p>
+              The clustering coefficient measures how densely connected a node's neighbors are to 
+              each other, ranging from 0 (no connections between neighbors) to 1 (all neighbors 
+              are connected).
+            </p>
+            <ul>
+              <li><strong>High clustering</strong>: Creates tight-knit communities where information 
+              spreads quickly within groups but may struggle to bridge between communities.</li>
+              <li><strong>Low clustering</strong>: Indicates more diverse connections that can 
+              facilitate broader information spread across different network regions.</li>
+            </ul>
+            <p>
+              Different algorithms may perform better in high vs. low clustering environments 
+              depending on their selection strategy and ability to identify bridge nodes between 
+              communities.
+            </p>
+          </div>
+        )}
+
+        {selectedTab === 'degreeImpact' && (
+          <div className="metric-explanation">
+            <h3>About Average Degree Impact</h3>
+            <p>
+              Average degree represents the typical number of connections each node has in the 
+              network. It's a fundamental measure of network connectivity.
+            </p>
+            <ul>
+              <li><strong>High degree networks</strong>: Offer more paths for information spread, 
+              potentially leading to faster and more extensive diffusion, but may also create 
+              redundant coverage.</li>
+              <li><strong>Low degree networks</strong>: Have fewer connections, making strategic 
+              node selection more critical. Each connection becomes more valuable for bridging 
+              different parts of the network.</li>
+            </ul>
+            <p>
+              Algorithm performance often varies with network density - some excel in sparse 
+              networks by finding key connectors, while others leverage the redundancy in 
+              dense networks for robust spreading.
+            </p>
+          </div>
+        )}
 
     </div>
   );

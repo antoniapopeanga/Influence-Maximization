@@ -1,4 +1,4 @@
-/* Main.css - Updated to match color theme */
+/* Main.css - Updated with animated center label */
 .main-container {
   display: flex;
   height: 100vh;
@@ -38,6 +38,181 @@
   position: relative;
   min-height: 0;
   overflow: hidden;
+}
+
+/* Animated Center Label Styles */
+.center-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 500;
+  color: #000100;
+  background: linear-gradient(135deg, rgba(180, 210, 231, 0.4) 0%, rgba(161, 166, 180, 0.3) 100%);
+  padding: 40px 60px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 1, 0, 0.1);
+  border: 2px solid #add4e5;
+  backdrop-filter: blur(10px);
+  max-width: 600px;
+  
+  /* Animation properties */
+  animation: fadeInFloat 2s ease-out, gentlePulse 4s ease-in-out infinite 2s;
+}
+
+.center-label h2 {
+  margin: 0 0 20px 0;
+  font-size: 28px;
+  font-weight: 600;
+  color: #bcd4de;
+  letter-spacing: -0.5px;
+  
+  /* Text animation */
+  animation: slideInFromTop 1.5s ease-out 0.5s both;
+}
+
+.center-label p {
+  margin: 0 0 20px 0;
+  font-size: 16px;
+  color: #bcd4de;
+  font-weight: 400;
+  line-height: 1.6;
+  
+  /* Text animation */
+  animation: slideInFromBottom 1.5s ease-out 1s both;
+}
+
+.center-label p:last-child {
+  margin-bottom: 0;
+}
+
+/* Feature list styling */
+.center-label .feature-list {
+  text-align: left;
+  margin: 20px 0 0 0;
+  padding: 0;
+  list-style: none;
+  animation: slideInFromBottom 1.5s ease-out 1.2s both;
+}
+
+.center-label .feature-list li {
+  position: relative;
+  margin-bottom: 12px;
+  padding: 12px 15px;
+  font-size: 15px;
+  color: #7a9bb5;
+  line-height: 1.5;
+  background: rgba(248, 248, 248, 0.1);
+  border-radius: 8px;
+  border-left: 3px solid #9cc4dd;
+  transition: all 0.3s ease;
+}
+
+.center-label .feature-list li:hover {
+  background: rgba(248, 248, 248, 0.2);
+  transform: translateX(5px);
+  border-left-color: #add4e5;
+}
+
+.center-label .feature-list li strong {
+  color: #bcd4de;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+  font-size: 16px;
+}
+
+.center-label .feature-list li:last-child {
+  margin-bottom: 0;
+}
+
+/* Staggered animation for list items */
+.center-label .feature-list li:nth-child(1) {
+  animation: slideInLeft 0.8s ease-out 1.4s both;
+}
+
+.center-label .feature-list li:nth-child(2) {
+  animation: slideInLeft 0.8s ease-out 1.6s both;
+}
+
+.center-label .feature-list li:nth-child(3) {
+  animation: slideInLeft 0.8s ease-out 1.8s both;
+}
+
+/* Main label animations */
+@keyframes fadeInFloat {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -40%);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+@keyframes gentlePulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow: 0 4px 20px rgba(0, 1, 0, 0.1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.02);
+    box-shadow: 0 6px 25px rgba(0, 1, 0, 0.15);
+  }
+}
+
+/* Text animations */
+@keyframes slideInFromTop {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromBottom {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+
+/* Hover effects for interactive fun */
+.center-label:hover {
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow: 0 8px 30px rgba(0, 1, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.center-label:hover h2 {
+  color: #9cc4dd;
+  transition: color 0.3s ease;
+}
+
+.center-label:hover p {
+  color: #9cc4dd;
+  transition: color 0.3s ease;
 }
 
 .action-buttons-container {

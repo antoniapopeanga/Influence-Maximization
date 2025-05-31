@@ -88,6 +88,26 @@ return (
           </div>
         )}
 
+        {!graphData && !isLoading &&!isShowingSavedRun&& !error && (
+          <div className="center-label">
+            <h2>Influence Maximization Algorithm Testing Platform</h2>
+            <p>
+              Get started by selecting parameters from the sidebar to run new simulations.<br />
+              Or explore existing results through these options:
+            </p>
+            <ul className="feature-list">
+              <li>
+                <strong>Select Simulation:</strong> Load and examine previous simulation results
+              </li>
+              <li>
+                <strong>See the Networks:</strong> Study the structure of networks used in tests
+              </li>
+              <li>
+                <strong>Performance Statistics:</strong> Analyze algorithm performance metrics
+              </li>
+            </ul>
+          </div>
+        )}
 
       <div className="preview-wrapper">
         <PreviewComponent 
