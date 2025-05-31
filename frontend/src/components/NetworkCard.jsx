@@ -25,8 +25,8 @@ const NetworkCard = ({ network }) => {
       {
         label: 'Frequency',
         data: getDegreeDistributionData().map(item => item.count),
-        backgroundColor: '#4f46e5',
-        borderColor: '#4f46e5',
+        backgroundColor: '#3f4c50',
+        borderColor: '#3f4c50',
         borderWidth: 1,
       },
     ],

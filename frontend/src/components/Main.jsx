@@ -129,7 +129,7 @@ return (
           open={isStatsModalOpen}
           onCancel={() => setIsStatsModalOpen(false)}
           footer={null}
-          width="80%"
+          width="65%"
           centered
         >
           <StatisticsComparison algorithmResults={graphData?.algorithm_results} />
@@ -141,7 +141,7 @@ return (
           open={isChartsModalOpen}
           onCancel={() => setIsChartsModalOpen(false)}
           footer={null}
-          width="80%"
+          width="65%"
           centered
           style={{ top: 20 }}
         >

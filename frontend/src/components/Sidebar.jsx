@@ -195,6 +195,7 @@ const handleSubmit = (e) => {
             </select>
           </div>
 
+        {selectedModel === "independent_cascade" && (
           <div className="form-group">
             <h3>Model Parameters</h3>
             {modelParams[selectedModel]?.map(param => (
@@ -216,8 +217,7 @@ const handleSubmit = (e) => {
               </div>
             ))}
           </div>
-
-
+        )}
 
           <div className="form-group">
             <h3>Select Algorithms (Multiple)</h3>
@@ -236,6 +236,7 @@ const handleSubmit = (e) => {
             </div>
           </div>
 
+        {selectedAlgorithms.length > 0 && (
           <div className="form-group">
             <h3>Algorithm Parameters</h3>
             {selectedAlgorithms.map(algorithm => (
@@ -276,6 +277,7 @@ const handleSubmit = (e) => {
               </div>
             ))}
           </div>
+        )}
 
           <button type="submit" className="submit-button">
             Run Comparison

@@ -1,26 +1,26 @@
 /* StatisticsComparison.css */
 .comparison-table {
   margin-top: 16px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid #B4D2E7;
   border-radius: 4px;
 }
 
 .comparison-table .ant-table-thead > tr > th {
-  background-color: #fafafa;
+  background-color: #B4D2E7;
   font-weight: 600;
-  color: #333;
+  color: #000100;
 }
 
 .comparison-table .ant-table-tbody > tr:nth-child(even) {
-  background-color: #f9f9f9;
+  background-color: #F8F8F8;
 }
 
 .comparison-table .ant-table-tbody > tr:hover {
-  background-color: #f0f7ff;
+  background-color: rgba(180, 210, 231, 0.3);
 }
 
 .seed-count {
-  color: #1890ff;
+  color: #A1A6B4;
   cursor: pointer;
   text-decoration: underline dotted;
 }
@@ -28,26 +28,30 @@
 .empty-state {
   text-align: center;
   padding: 24px;
-  border: 1px dashed #d9d9d9;
+  border: 1px dashed #A1A6B4;
   border-radius: 4px;
+  background-color: #F8F8F8;
 }
 
 .empty-message {
-  color: #999;
+  color: #A1A6B4;
 }
 
 .empty-message i {
   font-size: 24px;
   margin-bottom: 8px;
   display: block;
+  color: #A1A6B4;
 }
 
 .ant-modal-body {
   padding: 16px 24px;
+  background-color: #F8F8F8;
+  color: #000100;
 }
 
 .ant-progress-inner {
-  background-color: #e6f7ff;
+  background-color: rgba(180, 210, 231, 0.3);
 }
 
 .comparison-table {
@@ -61,14 +65,59 @@
 
 .empty-state .icon-data {
   font-size: 48px;
-  color: #ccc;
+  color: #A1A6B4;
 }
 
 .seed-count {
   cursor: help;
   text-decoration: underline dotted;
+  color: #A1A6B4;
 }
 
 .ant-collapse > .ant-collapse-item > .ant-collapse-header {
   align-items: center;
+  background-color: #F8F8F8;
+  color: #000100;
+}
+
+/* Additional theme overrides for Ant Design components */
+.ant-table {
+  background-color: #F8F8F8;
+  color: #000100;
+}
+
+.ant-table-tbody > tr > td {
+  color: #000100;
+  border-bottom: 1px solid #B4D2E7;
+}
+
+.ant-modal-content {
+  background-color: #F8F8F8;
+}
+
+.ant-modal-header {
+  background-color: #B4D2E7;
+  border-bottom: 1px solid #A1A6B4;
+}
+
+.ant-modal-title {
+  color: #000100;
+}
+
+.ant-collapse {
+  background-color: #F8F8F8;
+  border: 1px solid #B4D2E7;
+}
+
+.ant-collapse > .ant-collapse-item {
+  border-bottom: 1px solid #B4D2E7;
+}
+
+.ant-collapse-content {
+  background-color: #F8F8F8;
+  color: #000100;
+}
+
+.ant-progress-bg {
+  background-color: #A1A6B4 !important;
 }

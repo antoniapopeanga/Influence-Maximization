@@ -531,11 +531,11 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
           </div>
         )}
 
-        {!showModal &&
+        {!showModal && !isAnimating &&
           <div className="saved-run-controls">
             <div className="saved-run-buttons">
               <button onClick={() => setShowModal(true)}>
-                Select a previous simulation
+                Select simulation
               </button>
             </div>
           </div>
