@@ -290,7 +290,7 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
                           {run.algorithm.replace(/_/g, ' ').toUpperCase()}
                         </div>
                         <div className="run-metrics">
-                          <span className="spread">Spread: {run.spread}</span>
+                          <span className="spread">Spread: {run.spread} / {run.total_nodes}</span>
                           <span className="runtime">Runtime: {(run.runtime / 1000).toFixed(2)}s</span>
                         </div>
                       </div>
@@ -424,7 +424,7 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
                     </div>
                     <div className="info-row">
                       <span className="info-label">Activated:</span>
-                      <span className="info-value">{activatedNodes.size || currentRun.spread}</span>
+                      <span className="info-value">{activatedNodes.size || 0} / {currentRun.total_nodes}</span>
                     </div>
                     <div className="info-row">
                       <span className="info-label">Runtime:</span>

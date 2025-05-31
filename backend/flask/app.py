@@ -396,7 +396,24 @@ def get_statistics():
 def get_saved_runs():
     conn = sqlite3.connect('networks.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT id, algorithm, seed_size, network_name, diffusion_model, timestamp,runtime, spread FROM algorithm_runs ORDER BY timestamp DESC')
+    
+    cursor.execute('''
+        SELECT 
+            ar.id, 
+            ar.algorithm, 
+            ar.seed_size, 
+            ar.network_name, 
+            ar.diffusion_model, 
+            ar.timestamp,
+            ar.runtime, 
+            ar.spread,
+            ns.num_nodes,
+            ns.num_edges
+        FROM algorithm_runs ar
+        LEFT JOIN network_stats ns ON ar.network_name = ns.name
+        ORDER BY ar.timestamp DESC
+    ''')
+    
     runs = cursor.fetchall()
     conn.close()
     
@@ -408,10 +425,13 @@ def get_saved_runs():
         "diffusion_model": row[4],
         "timestamp": row[5],
         "runtime": row[6],
-        "spread": row[7]
+        "spread": row[7],
+        "total_nodes": row[8],  # From network_stats
+        "total_edges": row[9]   # From network_stats
     } for row in runs]
 
     return jsonify(result)
+
 @app.route('/saved-runs/<int:run_id>', methods=['GET'])
 def get_saved_run(run_id):
     conn = sqlite3.connect('networks.db')

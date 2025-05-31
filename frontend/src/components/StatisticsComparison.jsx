@@ -30,52 +30,58 @@ const StatisticsComparison = ({ algorithmResults }) => {
     });
   });
 
-  const columns = [
-    {
-      title: 'Algorithm',
-      dataIndex: 'algorithm',
-      key: 'algorithm',
-      render: (text) => (
-        <Tag color={getAlgorithmColor(text)}>
-          {text.replace(/_/g, ' ')}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Spread',
-      dataIndex: ['metrics', 'spread'],
-      key: 'spread',
-      sorter: (a, b) => a.metrics.spread - b.metrics.spread,
-    },
-    {
-      title: 'Runtime (ms)',
-      key: 'runtime',
-      sorter: (a, b) => a.metrics.runtime - b.metrics.runtime,
-      render: (_, record) => record.metrics.runtime.toFixed(2),
-    },
-{
-  title: "Efficiency = (Spread / N)% / log₁₀(Runtime)",
-  render: (_, record) => {
-    const spread = record.metrics.spread;
-    const runtime = record.metrics.runtime;
-    const coverage = (spread / totalNodes) * 100;
-    const eff = coverage / Math.log10(runtime + 10);
-    return (
-      <Tooltip title={`Efficiency = ${coverage.toFixed(2)}% / log₁₀(${(runtime + 10).toFixed(2)})`}>
-        {eff.toFixed(2)}
-      </Tooltip>
-    );
+const columns = [
+  {
+    title: 'Algorithm',
+    dataIndex: 'algorithm',
+    key: 'algorithm',
+    render: (text) => (
+      <Tag color={getAlgorithmColor(text)}>
+        {text.replace(/_/g, ' ')}
+      </Tag>
+    ),
   },
-  sorter: (a, b) => {
-    const covA = (a.metrics.spread / totalNodes) * 100;
-    const covB = (b.metrics.spread / totalNodes) * 100;
-    const effA = covA / Math.log10(a.metrics.runtime + 10);
-    const effB = covB / Math.log10(b.metrics.runtime + 10);
-    return effA - effB;
+  {
+    title: 'Spread / Total nodes',
+    key: 'spreadRatio',
+    render: (_, record) => (
+      <span>
+        {record.metrics.spread} / {totalNodes} 
+        <span style={{ marginLeft: 8, color: '#888' }}>
+          ({(record.metrics.spread / totalNodes * 100).toFixed(1)}%)
+        </span>
+      </span>
+    ),
+    sorter: (a, b) => a.metrics.spread - b.metrics.spread,
+  },
+  {
+    title: 'Runtime (ms)',
+    key: 'runtime',
+    sorter: (a, b) => a.metrics.runtime - b.metrics.runtime,
+    render: (_, record) => record.metrics.runtime.toFixed(2),
+  },
+  {
+    title: "Efficiency = (Spread / N)% / log₁₀(Runtime)",
+    render: (_, record) => {
+      const spread = record.metrics.spread;
+      const runtime = record.metrics.runtime;
+      const coverage = (spread / totalNodes) * 100;
+      const eff = coverage / Math.log10(runtime + 10);
+      return (
+        <Tooltip title={`Efficiency = ${coverage.toFixed(2)}% / log₁₀(${(runtime + 10).toFixed(2)})`}>
+          {eff.toFixed(2)}
+        </Tooltip>
+      );
+    },
+    sorter: (a, b) => {
+      const covA = (a.metrics.spread / totalNodes) * 100;
+      const covB = (b.metrics.spread / totalNodes) * 100;
+      const effA = covA / Math.log10(a.metrics.runtime + 10);
+      const effB = covB / Math.log10(b.metrics.runtime + 10);
+      return effA - effB;
+    }
   }
-}
-
-]
+];
 
   return (
     <Collapse ghost defaultActiveKey={Object.keys(seedSizeMap)}>

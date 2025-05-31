@@ -41,7 +41,7 @@ h3 {
   color: #6c757d;
 }
 
-.filters {
+.filters-networks {
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
@@ -52,7 +52,7 @@ h3 {
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.03);
 }
 
-.filters label {
+.filters-networks label {
   display: flex;
   flex-direction: column;
   font-weight: 500;
@@ -60,7 +60,7 @@ h3 {
   min-width: 200px;
 }
 
-.filters select {
+.filters-networks select {
   margin-top: 6px;
   padding: 8px 12px;
   border: 1px solid #dee2e6;
@@ -70,7 +70,7 @@ h3 {
   cursor: pointer;
 }
 
-.filters select:focus {
+.filters-networks select:focus {
   outline: none;
   border-color: #3498db;
   box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.25);
@@ -138,7 +138,7 @@ select option {
   padding: 8px;
 }
 
-.chart-container, .filters, .tabs button {
+.chart-container, .filters-networks, .tabs button {
   transition: all 0.3s ease;
 }
 

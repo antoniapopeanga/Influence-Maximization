@@ -480,7 +480,7 @@ modelCoverage: {
     <div className="statistics-page">
       <h1>Network Algorithm Analytics</h1>
 
-      <div className="filters">
+      <div className="filters-networks">
         <label>Network:
           <select value={selectedNetwork} onChange={e => setSelectedNetwork(e.target.value)}>
             <option value="all">All</option>
