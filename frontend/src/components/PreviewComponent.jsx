@@ -453,16 +453,6 @@ const PreviewComponent = ({ graphData, isLoading, selectedAlgorithms,isShowingSa
           </div>
 
           <div className="info-panel">
-            {currentStage && (
-              <div className="algorithm-stage-info">
-                <h3>{activeAlgorithm} - {currentStage.stage}</h3>
-                <div className="stage-details">
-                  <p>Selected Nodes: {currentStage.selected_nodes?.join(', ') || 'None'}</p>
-                  <p>Propagated Nodes: {currentStage.propagated_nodes?.join(', ') || 'None'}</p>
-                  <p>Total Activated: {currentStage.total_activated || 0}</p>
-                </div>
-              </div>
-            )}
 
             {currentSeedSize !== null && (
               <div className="seed-size-info show">

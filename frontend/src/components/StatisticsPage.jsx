@@ -65,6 +65,7 @@ const StatisticsPage = () => {
   const [selectedTab, setSelectedTab] = useState('coverage');
   const [selectedNetwork, setSelectedNetwork] = useState('all');
   const [selectedAlgorithm, setSelectedAlgorithm] = useState('all');
+  const [modelComparisonMode, setModelComparisonMode] = useState('coverage'); // 'coverage' or 'runtime'
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -242,7 +243,7 @@ const tabCharts = {
     }} />
   },
 modelCoverage: {
-  title: 'Coverage Comparison: IC (by probability) vs LT',
+  title: `${modelComparisonMode === 'coverage' ? 'Coverage' : 'Runtime'} Comparison: IC (by probability) vs LT`,
   chart: (() => {
     // grupam simularile in functie de probabilitati pt IC
     const icRuns = filteredRuns.filter(run => 
@@ -267,7 +268,7 @@ modelCoverage: {
     );
     
     const labels = [];
-    const coverageData = [];
+    const data = [];
     const backgroundColors = [];
     const borderColors = [];
     
@@ -285,9 +286,17 @@ modelCoverage: {
 
     sortedProbs.forEach((prob, index) => {
         labels.push(`IC (p=${prob})`);
-        coverageData.push(_.meanBy(icByProb[prob], 'coverage') || 0);
         
-
+        // Switch between coverage and runtime data
+        if (modelComparisonMode === 'coverage') {
+          data.push(_.meanBy(icByProb[prob], 'coverage') || 0);
+        } else {
+          // Calculate runtime per simulation
+          const totalRuntime = _.sumBy(icByProb[prob], 'runtime') || 0;
+          const numSimulations = icByProb[prob].length || 1;
+          data.push(totalRuntime / numSimulations);
+        }
+        
         const shadeIndex = Math.min(index, redShades.length - 1);
         backgroundColors.push(redShades[shadeIndex].bg);
         borderColors.push(redShades[shadeIndex].border);
@@ -296,7 +305,14 @@ modelCoverage: {
     //LT model
     if (ltRuns.length > 0) {
       labels.push('LT');
-      coverageData.push(_.meanBy(ltRuns, 'coverage') || 0);
+      if (modelComparisonMode === 'coverage') {
+        data.push(_.meanBy(ltRuns, 'coverage') || 0);
+      } else {
+        // Calculate runtime per simulation for LT
+        const totalRuntime = _.sumBy(ltRuns, 'runtime') || 0;
+        const numSimulations = ltRuns.length || 1;
+        data.push(totalRuntime / numSimulations);
+      }
       backgroundColors.push('rgba(54, 162, 235, 0.6)');
       borderColors.push('rgba(54, 162, 235, 1)');
     }
@@ -304,8 +320,8 @@ modelCoverage: {
     return <Bar data={{
       labels: labels,
       datasets: [{
-        label: 'Coverage (%)',
-        data: coverageData,
+        label: modelComparisonMode === 'coverage' ? 'Coverage (%)' : 'Runtime per Simulation (s)',
+        data: data,
         backgroundColor: backgroundColors,
         borderColor: borderColors,
         borderWidth: 1
@@ -314,10 +330,10 @@ modelCoverage: {
       scales: {
         y: {
           beginAtZero: true,
-          max: 100,
+          ...(modelComparisonMode === 'coverage' && { max: 100 }),
           title: {
             display: true,
-            text: 'Coverage (%)'
+            text: modelComparisonMode === 'coverage' ? 'Coverage (%)' : 'Runtime per Simulation (seconds)'
           }
         },
         x: {
@@ -334,7 +350,11 @@ modelCoverage: {
         tooltip: {
           callbacks: {
             label: function(context) {
-              return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
+              if (modelComparisonMode === 'coverage') {
+                return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
+              } else {
+                return `${context.dataset.label}: ${context.raw.toFixed(4)}s`;
+              }
             },
             afterLabel: function(context) {
               const label = context.label;
@@ -515,7 +535,24 @@ modelCoverage: {
       </div>
 
       <div className="chart-container">
-        <h2>{tabCharts[selectedTab].title}</h2>
+        <div className="chart-header">
+          <h2>{tabCharts[selectedTab].title}</h2>
+          {selectedTab === 'modelCoverage' && (
+            <div className="model-comparison-toggle">
+              <label className="toggle-switch">
+                <input 
+                  type="checkbox" 
+                  checked={modelComparisonMode === 'runtime'}
+                  onChange={e => setModelComparisonMode(e.target.checked ? 'runtime' : 'coverage')}
+                />
+                <span className="toggle-slider"></span>
+                <span className="toggle-label">
+                  {modelComparisonMode === 'coverage' ? 'Coverage' : 'Runtime'}
+                </span>
+              </label>
+            </div>
+          )}
+        </div>
         {tabCharts[selectedTab].chart}
       </div>
 
@@ -554,30 +591,44 @@ modelCoverage: {
             <li><strong>Runtime Efficiency</strong>: Normalized runtime performance (higher is better).</li>
             <li><strong>Scalability</strong>: Efficiency as the network grows, based on runtime per node.</li>
             <li><strong>Saturation Score</strong>: How well the algorithm fills the network relative to the best possible performance observed.</li>
-            <li><strong>Consistency</strong>: How stable the algorithm’s results are across runs.</li>
+            <li><strong>Consistency</strong>: How stable the algorithm's results are across runs.</li>
           </ul>
         </div>
       )}
 
         {selectedTab === 'modelCoverage' && (
           <div className="metric-explanation">
-            <h3>About Diffusion Model Coverage</h3>
+            <h3>About Diffusion Model {modelComparisonMode === 'coverage' ? 'Coverage' : 'Runtime'}</h3>
             <p>
-              This chart compares coverage performance between two diffusion models:
+              This chart compares {modelComparisonMode} performance between two diffusion models:
             </p>
             <ul>
               <li><strong>Independent Cascade (IC)</strong>: Each activated node attempts to activate 
-              its neighbors independently with a fixed probability (0.01, 0.05, or 0.1). Higher 
-              probabilities lead to more aggressive spreading but may cause rapid saturation.</li>
+              its neighbors independently with a fixed probability (0.01, 0.05, or 0.1). 
+              {modelComparisonMode === 'coverage' 
+                ? ' Higher probabilities lead to more aggressive spreading but may cause rapid saturation.' 
+                :  'Higher probabilities typically require more computational time due to increased activation attempts.'
+              }</li>
               <li><strong>Linear Threshold (LT)</strong>: Nodes are activated when the cumulative 
-              influence from their activated neighbors exceeds a threshold. This model captures 
-              social reinforcement effects where multiple influences are needed for activation.</li>
+              influence from their activated neighbors exceeds a threshold. 
+              {modelComparisonMode === 'coverage' 
+                ? ' This model captures social reinforcement effects where multiple influences are needed for activation.' 
+                : ' Runtime depends on the complexity of threshold calculations and cascading effects.'
+              }</li>
             </ul>
-            <p>
-              The different IC probabilities show how activation likelihood affects overall network 
-              coverage, while LT represents a fundamentally different spreading mechanism based on 
-              cumulative social pressure.
-            </p>
+            {modelComparisonMode === 'coverage' ? (
+              <p>
+                The different IC probabilities show how activation likelihood affects overall network 
+                coverage, while LT represents a fundamentally different spreading mechanism based on 
+                cumulative social pressure.
+              </p>
+            ) : (
+              <p>
+                Runtime comparison reveals the computational efficiency per simulation for different models. 
+                This shows the average time each individual simulation takes, allowing for fair comparison 
+                regardless of the total number of runs performed for each model configuration.
+              </p>
+            )}
           </div>
         )}
 
