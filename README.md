@@ -1,4 +1,4 @@
-# Influence Maximization in Social Networks - GraphNet app
+# Influence Maximization - GraphNet app
 
 This project implements and compares various algorithms for solving the influence maximization problem in social networks, based on the work of Kempe, Kleinberg, and Tardos (2003).
 
