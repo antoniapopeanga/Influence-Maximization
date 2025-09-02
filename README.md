@@ -1,16 +1,24 @@
-# Influence Maximization - GraphNet app
+# Influence Maximization – GraphNet App
 
-This project implements and compares various algorithms for solving the influence maximization problem in social networks, based on the work of Kempe, Kleinberg, and Tardos (2003).
+This project is part of my bachelor’s thesis at the University of Bucharest. It implements and compares several algorithms for solving the **influence maximization** problem in social networks, inspired by the seminal work of Kempe, Kleinberg, and Tardos (2003).
 
 ## 🎯 Problem Overview
 
-The influence maximization problem addresses a fundamental question: **How does our social network influence our opinions and decisions?** Given the "six degrees of separation" theory, this research explores how influence propagates through social networks and how to maximize it strategically.
+The influence maximization problem addresses a key question:  
+**How do social networks shape opinions, behaviors, and decisions?**  
+
+Building on the “six degrees of separation” theory, this research investigates how influence propagates through social networks and how it can be maximized strategically.
+
+---
+
+> *"Modeling and optimizing influence has transformative implications"* — Kempe, Kleinberg & Tardos (2003)
 
 ### Applications
-- **Political Campaigns**: Strategic voter influence through key network nodes
-- **Marketing**: Viral marketing and product adoption
-- **Epidemiology**: Disease spread modeling and intervention strategies
-- **Social Sciences**: Understanding social conformity and personal choices
+- **Political Campaigns** – identifying key individuals for maximizing voter outreach  
+- **Marketing** – viral advertising and product adoption strategies  
+- **Epidemiology** – modeling disease spread and planning effective interventions  
+- **Social Sciences** – analyzing social conformity and collective decision-making  
+
 
 ## 🧮 Mathematical Framework
 
@@ -30,7 +38,7 @@ This function maps each subset of nodes to the number of nodes they can activate
 
 A crucial property for efficiently solving the influence maximization problem is the submodularity of the σ function. This property embodies the principle of diminishing returns: adding a node to a smaller set always yields greater or equal marginal gain compared to adding the same node to a larger set that contains the smaller one. This fundamental insight enables greedy algorithms to achieve strong approximation guarantees while significantly reducing the computational burden of Monte Carlo simulations.
 
-![Submodularity](/images/submodularitate.png?raw=true "Submodularity")
+<img src="/images/submodularitate.png" alt="Submodularity" width="400"/>
 
 ## 📊 Diffusion Models
 
@@ -276,6 +284,8 @@ Output: Seed set S of size k
 
 **Database**: SQLite for storing network data and simulation results
 
+
+
 ``` python
 #endpoint pentru a rula pe rand toti algoritmii
 @app.route("/run-algorithm", methods=["POST"])
@@ -365,9 +375,11 @@ def get_saved_run(run_id):
 - **Saturation**: Proximity to best achieved coverage
 - **Scalability**: Performance on varying network sizes
 
-![Eficienta euristici](/images/euristicile.jpg?raw=true "Heuristic performance")
-
-![Eficienta greedy](/images/greedyVScelf.jpg?raw=true "Greedy performance")
+<p>
+  <img src="/images/euristicile.jpg" alt="Heuristic performance" width="340"/>
+  <img src="/images/greedyVScelf.jpg" alt="Greedy performance" width="350"/>
+</p>
+  
 
 ### Key Findings
 
@@ -385,8 +397,14 @@ def get_saved_run(run_id):
 - **Dispersed Networks**: Heuristics struggle significantly (<50% coverage)
 - **Well-Connected Networks**: Degree heuristic performs surprisingly well
 
-![Clustering coef](/images/algoritmi_coef_clustering.jpg?raw=true "Low clustering coefficient performance")
+<img src="/images/algoritmi_coef_clustering.jpg" alt="Low clustering coefficient performance" width="600"/>
 
+## 🛠️ Tech Stack & Scale
+
+- **Total Simulations Conducted**: ~550  
+- **Networks Analyzed**: 15  
+- **Languages**: Python, JavaScript (React.js)  
+- **Key Libraries**: NumPy, Pandas, NetworkX, SQLite, Flask, React Force Graph 3D
 
 ## 🚀 Usage
 
@@ -402,11 +420,6 @@ venv\Scripts\activate     # Windows
 
 # Start Flask server
 python app.py
-### Web Interface
-1. Select test network and diffusion model
-2. Choose algorithms and seed set parameters
-3. View real-time propagation animation
-4. Analyze performance statistics
 ```
 #### Frontend Setup
 
@@ -429,27 +442,23 @@ npm start
 - View real-time propagation animation
 - Analyze performance statistics
 
-![Web interface](/images/ss_aplicatie.jpg.jpg?raw=true "Web interface")
-![Web interface 2](/images/ss-animatie_curenta.jpg?raw=true "Current animation")
-![Web interface 3](/images/statistici_curente.jpg?raw=true "Statistics")
+<table>
+  <tr>
+    <td align="center">
+      <img src="/images/ss_aplicatie.jpg" alt="Web interface" width="400"/><br/>
+      <sub>Web interface</sub>
+    </td>
+    <td align="center">
+      <img src="/images/ss-animatie_curenta.jpg" alt="Current animation" width="400"/><br/>
+      <sub>Current animation</sub>
+    </td>
+    <td align="center">
+      <img src="/images/statistici_curente.jpg" alt="Statistics" width="400"/><br/>
+      <sub>Statistics</sub>
+    </td>
+  </tr>
+</table>
 
-
-## 🔬 Future Directions
-
-### Modern Approaches
-- **Graph Neural Networks (GCNs)**: Learn node representations for importance prediction
-- **Machine Learning**: Hybrid approaches combining heuristics with learned features
-- **Dynamic Networks**: Algorithms for time-evolving social networks
-
-### Optimization Opportunities
-- **Advanced Sampling**: Reduce Monte Carlo simulation requirements
-- **GPU Acceleration**: CUDA implementations for large-scale networks
-
-## 📚 References
-
-1. Kempe, D., Kleinberg, J., & Tardos, E. (2003). Maximizing the spread of influence through a social network. *Proceedings of the ninth ACM SIGKDD international conference on Knowledge discovery and data mining*.
-
-2. Leskovec, J., Krause, A., Guestrin, C., Faloutsos, C., VanBriesen, J., & Glance, N. (2007). Cost-effective outbreak detection in networks. *Proceedings of the 13th ACM SIGKDD international conference on Knowledge discovery and data mining*.
 
 ## 📁 Project Structure
 
@@ -490,11 +499,13 @@ influence-maximization/
 
 ```
 
----
+## 🔬 Future Directions
 
-> *"Modeling and optimizing influence has transformative implications"* - Kempe, Kleinberg & Tardos
+### Modern Approaches
+- **Graph Neural Networks (GCNs)**: Learn node representations for importance prediction
+- **Machine Learning**: Hybrid approaches combining heuristics with learned features
+- **Dynamic Networks**: Algorithms for time-evolving social networks
 
-**Total Simulations Conducted**: ~550  
-**Networks Analyzed**: 7 diverse social networks  
-**Languages**: Python, JavaScript (React.js)  
-**Key Libraries**: NumPy, NetworkX, SQLite, react-force-graph-3d
+### Optimization Opportunities
+- **Advanced Sampling**: Reduce Monte Carlo simulation requirements
+- **GPU Acceleration**: CUDA implementations for large-scale networks
