@@ -26,6 +26,12 @@ This function maps each subset of nodes to the number of nodes they can activate
 
 **Note**: This is an NP-hard problem with no known polynomial-time solution.
 
+## 📉 Submodularity
+
+A crucial property for efficiently solving the influence maximization problem is the submodularity of the σ function. This property embodies the principle of diminishing returns: adding a node to a smaller set always yields greater or equal marginal gain compared to adding the same node to a larger set that contains the smaller one. This fundamental insight enables greedy algorithms to achieve strong approximation guarantees while significantly reducing the computational burden of Monte Carlo simulations.
+
+![Submodularity](/images/submodularitate.png?raw=true "Submodularity")
+
 ## 📊 Diffusion Models
 
 ### Linear Threshold (LT) Model
@@ -359,6 +365,10 @@ def get_saved_run(run_id):
 - **Saturation**: Proximity to best achieved coverage
 - **Scalability**: Performance on varying network sizes
 
+![Eficienta euristici](/images/euristicile.jpg?raw=true "Heuristic performance")
+
+![Eficienta greedy](/images/greedyVScelf.jpg?raw=true "Greedy performance")
+
 ### Key Findings
 
 #### Algorithm Performance
@@ -375,36 +385,54 @@ def get_saved_run(run_id):
 - **Dispersed Networks**: Heuristics struggle significantly (<50% coverage)
 - **Well-Connected Networks**: Degree heuristic performs surprisingly well
 
+![Clustering coef](/images/algoritmi_coef_clustering.jpg?raw=true "Low clustering coefficient performance")
+
 
 ## 🚀 Usage
 
-### Running Simulations
-```python
-# Example usage (code to be inserted)
-from graphnet import InfluenceMaximization
-from models import LinearThreshold, IndependentCascade
+### Running the Application
 
-# Initialize network and model
-network = load_network("facebook_ego.txt")
-model = LinearThreshold(network)
-solver = InfluenceMaximization(model)
+#### Backend Setup
+```bash
+# Navigate to backend directory and activate virtual environment
+cd backend/flask
+source venv/bin/activate  # Linux/Mac
+# OR
+venv\Scripts\activate     # Windows
 
-# Run algorithms
-greedy_result = solver.greedy(k=10, simulations=1000)
-celf_result = solver.celf(k=10, simulations=1000)
-```
-
+# Start Flask server
+python app.py
 ### Web Interface
 1. Select test network and diffusion model
 2. Choose algorithms and seed set parameters
 3. View real-time propagation animation
 4. Analyze performance statistics
+```
+#### Frontend Setup
 
-*[Code suggestion: Insert React component examples here]*
+```bash
+# Navigate to frontend directory (separate terminal)
+cd frontend
 
-## 📊 Database Schema
+# Install dependencies (first time only)
+npm install
 
-*[Code suggestion: Insert SQLite table definitions here]*
+# Start React development server
+npm start
+
+```
+
+### Web Interface
+
+- Select test network and diffusion model
+- Choose algorithms and seed set parameters
+- View real-time propagation animation
+- Analyze performance statistics
+
+![Web interface](/images/ss_aplicatie.jpg.jpg?raw=true "Web interface")
+![Web interface 2](/images/ss-animatie_curenta.jpg?raw=true "Current animation")
+![Web interface 3](/images/statistici_curente.jpg?raw=true "Statistics")
+
 
 ## 🔬 Future Directions
 
@@ -415,7 +443,6 @@ celf_result = solver.celf(k=10, simulations=1000)
 
 ### Optimization Opportunities
 - **Advanced Sampling**: Reduce Monte Carlo simulation requirements
-- **Parallel CELF**: Distributed priority queue management
 - **GPU Acceleration**: CUDA implementations for large-scale networks
 
 ## 📚 References
@@ -428,63 +455,40 @@ celf_result = solver.celf(k=10, simulations=1000)
 
 ```
 influence-maximization/
-├── src/
-│   ├── algorithms/
-│   │   ├── greedy.py          # [Insert greedy implementation]
-│   │   ├── celf.py            # [Insert CELF implementation]
-│   │   └── heuristics.py      # [Insert heuristic algorithms]
-│   ├── models/
-│   │   ├── linear_threshold.py    # [Insert LT model]
-│   │   └── independent_cascade.py # [Insert IC model]
-│   ├── utils/
-│   │   ├── graph_loader.py    # [Insert network loading utilities]
-│   │   └── visualization.py   # [Insert plotting functions]
-│   └── app/
-│       ├── backend/
-│       │   └── api.py         # [Insert Flask/FastAPI endpoints]
-│       └── frontend/
-│           └── components/    # [Insert React components]
-├── data/
-│   ├── networks/             # Test network files
-│   └── results/              # Simulation results
-├── tests/                    # Unit tests
-├── requirements.txt          # Python dependencies
+├── backend/
+│   └── flask/
+│       ├── algorithms/
+│       │   ├── classic_greedy.py      # Greedy algorithm implementation
+│       │   ├── celf.py                # CELF optimization algorithm
+│       │   ├── centrality_heuristic.py # Betweenness centrality heuristic
+│       │   ├── degree_heuristic.py    # Degree-based node selection
+│       │   └── random_selection.py    # Random baseline algorithm
+│       ├── models/
+│       │   └── propagation_models.py  # LT and IC diffusion models
+│       ├── app.py                     # Flask API server
+│       ├── database.py                # Database operations
+│       ├── dataset_to_csv.py          # Data preprocessing utilities
+│       └── networks.db                # SQLite database
+├── datasets/
+│   ├── csv_files/                     # Processed network data
+│   ├── email/                         # Email communication networks
+│   ├── email_TarragonaUni/           # University email network
+│   ├── facebook/                      # Facebook ego networks
+│   ├── filmtrust/                     # Movie rating trust network
+│   ├── physicians/                    # Medical professional network
+│   └── pol_blogs/                     # Political blog network (2004)
+├── frontend/
+│   ├── public/                        # Static assets
+│   └── src/
+│       ├── components/                # React UI components
+│       ├── css/                       # Styling files
+│       ├── utils/                     # Frontend utilities
+│       ├── App.css                    # Main application styles
+│       └── App.js                     # Main React component
+├── requirements.txt                   # Python dependencies
 └── README.md
+
 ```
-
-## 🛠️ Installation & Setup
-
-```bash
-# Clone repository
-git clone [repository-url]
-cd influence-maximization
-
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Install Node.js dependencies (for frontend)
-cd src/app/frontend
-npm install
-
-# Run application
-python src/app/backend/api.py  # Backend
-npm start                      # Frontend (separate terminal)
-```
-
-*[Code suggestion: Insert requirements.txt content here]*
-
-## 🤝 Contributing
-
-Contributions are welcome! Areas of particular interest:
-- New algorithm implementations
-- Network preprocessing utilities  
-- Visualization enhancements
-- Performance optimizations
-- Additional diffusion models
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
