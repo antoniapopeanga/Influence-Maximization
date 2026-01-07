@@ -2,7 +2,7 @@
 
 This project is part of my bachelor’s thesis at the University of Bucharest. It implements and compares several algorithms for solving the **influence maximization** problem in social networks, inspired by the seminal work of Kempe, Kleinberg, and Tardos (2003).
 
-## 🎯 Problem Overview
+##  Problem Overview
 
 The influence maximization problem addresses a key question:  
 **How do social networks shape opinions, behaviors, and decisions?**  
@@ -20,7 +20,7 @@ Building on the “six degrees of separation” theory, this research investigat
 - **Social Sciences** – analyzing social conformity and collective decision-making  
 
 
-## 🧮 Mathematical Framework
+##  Mathematical Framework
 
 The problem is formalized as follows:
 
@@ -34,13 +34,13 @@ This function maps each subset of nodes to the number of nodes they can activate
 
 **Note**: This is an NP-hard problem with no known polynomial-time solution.
 
-## 📉 Submodularity
+##  Submodularity
 
 A crucial property for efficiently solving the influence maximization problem is the submodularity of the σ function. This property embodies the principle of diminishing returns: adding a node to a smaller set always yields greater or equal marginal gain compared to adding the same node to a larger set that contains the smaller one. This fundamental insight enables greedy algorithms to achieve strong approximation guarantees while significantly reducing the computational burden of Monte Carlo simulations.
 
 <img src="/images/submodularitate.png" alt="Submodularity" width="400"/>
 
-## 📊 Diffusion Models
+##  Diffusion Models
 
 ### Linear Threshold (LT) Model
 - **Concept**: Deterministic model based on social conformity
@@ -197,7 +197,7 @@ class IndependentCascadeModel:
         return [self.get_node_from_index(idx) for idx in new_active]
 ```
 
-## 🔧 Implemented Algorithms
+##  Implemented Algorithms
 
 ### 1. Greedy Algorithm
 - **Approach**: Selects the node with maximum marginal gain at each step
@@ -275,7 +275,7 @@ Output: Seed set S of size k
 - Random node selection (baseline for comparison)
 - Used primarily for performance benchmarking
 
-## 🏗️ System Architecture
+##  System Architecture
 
 ### GraphNet Application
 **Frontend**: React.js with `react-force-graph-3d` for network visualization
@@ -359,7 +359,7 @@ def get_saved_run(run_id):
     return jsonify({"error": "Not found"}), 404
 ```
 
-## 📈 Experimental Results
+##  Experimental Results
 
 ### Test Networks
 - **Facebook Networks**: Ego-user friendship networks
@@ -399,14 +399,14 @@ def get_saved_run(run_id):
 
 <img src="/images/algoritmi_coef_clustering.jpg" alt="Low clustering coefficient performance" width="600"/>
 
-## 🛠️ Tech Stack & Scale
+##  Tech Stack & Scale
 
 - **Total Simulations Conducted**: ~550  
 - **Networks Analyzed**: 15  
 - **Languages**: Python, JavaScript (React.js)  
 - **Key Libraries**: NumPy, Pandas, NetworkX, SQLite, Flask, React Force Graph 3D
 
-## 🚀 Usage
+##  Usage
 
 ### Running the Application
 
@@ -460,7 +460,7 @@ npm start
 </table>
 
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 influence-maximization/
@@ -499,7 +499,7 @@ influence-maximization/
 
 ```
 
-## 🔬 Future Directions
+##  Future Directions
 
 ### Modern Approaches
 - **Graph Neural Networks (GCNs)**: Learn node representations for importance prediction
